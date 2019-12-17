@@ -1,4 +1,4 @@
-name: 'Backport pull request'
+name: 'Pull request backport via label'
 description: 'Backport pull request based on backport label'
 branding:
   icon: corner-left-down
