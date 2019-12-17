@@ -1,0 +1,11 @@
+name: 'Backport pull request'
+description: 'Backport pull request based on backport label'
+branding:
+  icon: corner-left-down
+  color: gray-dark
+inputs:
+  token:
+    default: ${{ github.token }}
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
