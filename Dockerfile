@@ -7,7 +7,7 @@ RUN apk add --update --no-cache \
     jq \
     git
 
-COPY backport /usr/bin/backport
+COPY backport.sh /usr/bin/backport
 
 USER 1001:115
 
