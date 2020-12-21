@@ -1,4 +1,4 @@
-# TEST backport-action
+# backport-action
 
 GitHub Action to backport pull requests.
 
