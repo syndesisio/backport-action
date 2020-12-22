@@ -5,6 +5,8 @@ set -o pipefail
 fail() {
   local message=$1
 
+  echo "::error::${message}"
+
   local comment="{\
     \"body\": \"${message}\"
   }"
@@ -45,9 +47,10 @@ cherry_pick() {
 
     set +e
 
-    git checkout -q -b "${backport_branch}" || fail "Unable to checkout branch named \'${branch}\', you might need to create it or use a different label."
+    git checkout -q -b "${backport_branch}" > /dev/null 2>&1 || fail "Unable to checkout branch named \'${branch}\', you might need to create it or use a different label."
 
-    git -c user.name="${user_name}" -c user.email="${user_email}" cherry-pick --mainline 1 "${merge_sha}" || fail "Unable to cherry-pick commit ${merge_sha} on top of branch \`${branch}\`.\n\nThis pull request needs to be backported manually."
+    local err
+    err=$(git -c user.name="${user_name}" -c user.email="${user_email}" cherry-pick --mainline 1 "${merge_sha}" 2>&1) || fail "Unable to cherry-pick commit ${merge_sha} on top of branch '${branch}'.\n\nThis pull request needs to be backported manually.\nError:\n\`\`\`\n${err}\n\`\`\`"
 
     set -e
   )
