@@ -144,11 +144,12 @@ delete_branch() {
 
   local status
   status=$(curl -XDELETE -fsSL \
+    --fail \
     --output /dev/null \
     -w '%{http_code}' \
     -H 'Accept: application/vnd.github.v3+json' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    "$refs_url/heads/$branch")
+    "$refs_url/heads/$branch" || true)
 
   if [[ "${status}" == 204 || "${status}" == 422 ]]; then
     return 0
