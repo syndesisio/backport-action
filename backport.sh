@@ -7,12 +7,11 @@ fail() {
 
   echo "::error::${message}"
 
-  local comment="{\
-    \"body\": \"${message}\"
-  }"
+  local comment
+  comment="$(jq -n -c --arg body "${message}" '{"body": $body|gsub ("\\\\n";"\n")}')"
 
-  local comments
-  comments=$(jq --raw-output .pull_request._links.comments.href "${GITHUB_EVENT_PATH}")
+  local comments_url
+  comments_url=$(jq --raw-output .pull_request._links.comments.href "${GITHUB_EVENT_PATH}")
 
   curl -XPOST -fsSL \
     --output /dev/null \
@@ -20,7 +19,7 @@ fail() {
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
     -H "Content-Type: application/json" \
     -d "${comment}" \
-    "${comments}"
+    "${comments_url}"
 
   exit 1
 }
