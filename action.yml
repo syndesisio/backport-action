@@ -7,5 +7,7 @@ inputs:
   token:
     default: ${{ github.token }}
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
+  using: 'composite'
+  steps:
+    - run: ${{ github.action_path }}/backport.sh
+      shell: bash
