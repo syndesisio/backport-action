@@ -263,6 +263,49 @@ EOF
        The status should be success
      End
    End
+
+   Describe 'INPUT_TOKEN not set'
+     remove_input_token() {
+       unset INPUT_TOKEN
+     }
+     Before 'remove_input_token'
+
+     setup_event_file() {
+     cat<<EOF>"${GITHUB_EVENT_PATH}"
+{
+  "number": 123,
+  "pull_request": {
+    "state": "merged",
+    "merged": true,
+    "labels": [
+      {
+        "name": "backport branch1"
+      },
+      {
+        "name": "backport branch2"
+      }
+    ],
+    "title": "[Backport branch] Something",
+    "head": {
+      "ref": "sha",
+      "repo": {
+        "git_refs_url": "git-refs-url{/sha}"
+      }
+    }
+  }
+}
+EOF
+     }
+     Before 'setup_event_file'
+
+     It 'Stops working'
+       When run main
+       The variable 'delete_branch_args' should be undefined
+       The variable 'backport_args[*]' should be undefined
+       The output should equal '::error::INPUT_TOKEN is was not provided, by default it should be set to {{ github.token }}'
+       The status should equal 1
+     End
+   End
   End
 
 End

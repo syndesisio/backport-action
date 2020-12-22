@@ -141,6 +141,13 @@ delete_branch() {
     "$refs/$ref"
 }
 
+check_token_is_defined() {
+  if [[ -z ${INPUT_TOKEN+x} ]]; then
+    echo '::error::INPUT_TOKEN is was not provided, by default it should be set to {{ github.token }}'
+    exit 1
+  fi
+}
+
 main() {
   local state
   state=$(jq --raw-output .pull_request.state "${GITHUB_EVENT_PATH}")
@@ -152,6 +159,7 @@ main() {
   merged=$(jq --raw-output .pull_request.merged "${GITHUB_EVENT_PATH}")
 
   if [[ "$state" == "closed" && "$login" == "github-actions[bot]" && "$title" == '[Backport '* ]]; then
+    check_token_is_defined
     delete_branch "head/$(jq --raw-output .pull_request.head.ref "${GITHUB_EVENT_PATH}")"
     return
   fi
@@ -172,6 +180,7 @@ main() {
     # label needs to be `backport <name of the branch>`
     if [[ "${label}" == 'backport '* ]]; then
       local branch=${label#* }
+      check_token_is_defined
       backport "${number}" "${branch}"
     fi
   done
@@ -181,4 +190,3 @@ main() {
 ${__SOURCED__:+return}
 
 main "$@"
-
