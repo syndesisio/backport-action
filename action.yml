@@ -6,8 +6,11 @@ branding:
 inputs:
   token:
     default: ${{ github.token }}
+    required: true
 runs:
   using: 'composite'
   steps:
     - run: ${{ github.action_path }}/backport.sh
       shell: bash
+      env:
+        INPUT_TOKEN: ${{ inputs.token }}
