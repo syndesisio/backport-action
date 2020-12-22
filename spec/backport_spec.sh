@@ -117,13 +117,8 @@ EOF
       It 'Fails due to merge conflict'
         When run cherry_pick 'branch' "${git_repository}" 'backport-branch' "${merge_commit_sha}"
         The value "$(cd "${GITHUB_WORKSPACE}" && git show backport-branch:file)" should equal "conflict"
-        The output should match pattern "::error::Unable to cherry-pick commit ${merge_commit_sha} on top of branch 'branch'.\n\nThis pull request needs to be backported manually.\nError:\n\`\`\`\nAuto-merging file
-CONFLICT (content): Merge conflict in file
-error: could not apply *... Merge commit '*'
-hint: after resolving the conflicts, mark the corrected paths
-hint: with 'git add <paths>' or 'git rm <paths>'
-hint: and commit the result with 'git commit'\n\`\`\`
-CURL invoked with:-XPOST -fsSL --output /dev/null -H Accept: application/vnd.github.v3+json -H Authorization: Bearer github-token -H Content-Type: application/json -d {\"body\":\"Unable to cherry-pick commit * on top of branch 'branch'.\\n\\nThis pull request needs to be backported manually.\\nError:\\n\`\`\`\\nAuto-merging file\\nCONFLICT (content): Merge conflict in file\\nerror: could not apply *... Merge commit '*'\\nhint: after resolving the conflicts, mark the corrected paths\\nhint: with 'git add <paths>' or 'git rm <paths>'\\nhint: and commit the result with 'git commit'\\n\`\`\`\"} comments-url"
+        The output should match pattern "::error::Unable to cherry-pick commit ${merge_commit_sha} on top of branch \`branch\`.\n\nThis pull request needs to be backported manually.
+CURL invoked with:-XPOST -fsSL --output /dev/null -H Accept: application/vnd.github.v3+json -H Authorization: Bearer github-token -H Content-Type: application/json -d {\"body\":\"Unable to cherry-pick commit * on top of branch \`branch\`.\\n\\nThis pull request needs to be backported manually.\\n\\n<details><summary>Error</summary><pre>Auto-merging file\\nCONFLICT (content): Merge conflict in file\\nerror: could not apply *... Merge commit '*'\\nhint: after resolving the conflicts, mark the corrected paths\\nhint: with 'git add <paths>' or 'git rm <paths>'\\nhint: and commit the result with 'git commit'</pre></details>\"} comments-url"
         The status should equal 1
       End
     End

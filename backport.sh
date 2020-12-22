@@ -4,11 +4,17 @@ set -o pipefail
 
 fail() {
   local message=$1
+  local error=$2
 
   echo "::error::${message}"
 
-  local comment
-  comment="$(jq -n -c --arg body "${message}" '{"body": $body|gsub ("\\\\n";"\n")}')"
+  local comment="${message}"
+  if [ -n "${error}" ]
+  then
+    comment+="\n\n<details><summary>Error</summary><pre>${error}</pre></details>"
+  fi
+  local comment_json
+  comment_json="$(jq -n -c --arg body "${comment}" '{"body": $body|gsub ("\\\\n";"\n")}')"
 
   local comments_url
   comments_url=$(jq --raw-output .pull_request._links.comments.href "${GITHUB_EVENT_PATH}")
@@ -18,7 +24,7 @@ fail() {
     -H 'Accept: application/vnd.github.v3+json' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d "${comment}" \
+    -d "${comment_json}" \
     "${comments_url}"
 
   exit 1
@@ -49,7 +55,7 @@ cherry_pick() {
     git checkout -q -b "${backport_branch}" > /dev/null 2>&1 || fail "Unable to checkout branch named \'${branch}\', you might need to create it or use a different label."
 
     local err
-    err=$(git -c user.name="${user_name}" -c user.email="${user_email}" cherry-pick --mainline 1 "${merge_sha}" 2>&1) || fail "Unable to cherry-pick commit ${merge_sha} on top of branch '${branch}'.\n\nThis pull request needs to be backported manually.\nError:\n\`\`\`\n${err}\n\`\`\`"
+    err=$(git -c user.name="${user_name}" -c user.email="${user_email}" cherry-pick --mainline 1 "${merge_sha}" 2>&1) || fail "Unable to cherry-pick commit ${merge_sha} on top of branch \`${branch}\`.\n\nThis pull request needs to be backported manually." "${err}"
 
     set -e
   )
