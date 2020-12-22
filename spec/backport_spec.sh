@@ -26,32 +26,114 @@ Describe 'Backport action'
   End
 
   Describe 'cherry_pick'
-    setup_repo() {
-      cd "${git_repository}" || exit
-      git init -q
-      git config user.name testuser
-      git config user.email test@example.com
-      echo initial > file
-      git add file
-      git commit -q -m initial file
-      git checkout -q -b branch
-      git checkout -q -b feature
-      echo modified > file
-      git commit -q -m change file
-      commit="$(git rev-parse HEAD)"
-      git checkout -q master
-      git merge -q --no-ff --commit "${commit}"
-      merge_commit_sha="$(git rev-parse HEAD)"
-    }
-    Before 'setup_repo'
 
-    It 'Cherry picks'
-      When call cherry_pick 'branch' "${git_repository}" 'backport-branch' "${merge_commit_sha}"
-      The value "$(cd "${GITHUB_WORKSPACE}" && git show backport-branch:file)" should equal "modified"
-      The line 1 should start with "[backport-branch"
-      The line 2 should start with " Date"
-      The line 3 should equal      " 1 file changed, 1 insertion(+), 1 deletion(-)"
+    Describe 'Cherry pick succeeds'
+      setup_repo() {
+        cd "${git_repository}" || exit
+        git init -q
+        git config user.name testuser
+        git config user.email test@example.com
+        echo initial > file
+        git add file
+        git commit -q -m initial file
+        git checkout -q -b branch
+        git checkout -q -b feature
+        echo modified > file
+        git commit -q -m change file
+        commit="$(git rev-parse HEAD)"
+        git checkout -q master
+        git merge -q --no-ff --commit "${commit}"
+        merge_commit_sha="$(git rev-parse HEAD)"
+      }
+      Before 'setup_repo'
+
+      It 'Cherry picks'
+        When call cherry_pick 'branch' "${git_repository}" 'backport-branch' "${merge_commit_sha}"
+        The value "$(cd "${GITHUB_WORKSPACE}" && git show backport-branch:file)" should equal "modified"
+      End
     End
+
+    Describe 'Merge conflict'
+      # mock curl
+      curl() {
+        echo "CURL invoked with:$*"
+      }
+
+      setup_repo() {
+        cd "${git_repository}" || exit
+        git init -q
+        git config user.name testuser
+        git config user.email test@example.com
+        echo initial > file
+        git add file
+        git commit -q -m initial file
+        git checkout -q -b branch
+        echo conflict > file
+        git add file
+        git commit -q -m conflict
+        git checkout -q -b feature master
+        echo modified > file
+        git commit -q -m change file
+        commit="$(git rev-parse HEAD)"
+        git checkout -q master
+        git merge -q --no-ff --commit "${commit}"
+        merge_commit_sha="$(git rev-parse HEAD)"
+      }
+      Before 'setup_repo'
+
+      setup_event_file() {
+        cat<<EOF>"${GITHUB_EVENT_PATH}"
+{
+  "number": 123,
+  "pull_request": {
+    "state": "merged",
+    "merged": true,
+    "labels": [
+      {
+        "name": "backport branch1"
+      },
+      {
+        "name": "backport branch2"
+      }
+    ],
+    "title": "[Backport branch] Something",
+    "head": {
+      "ref": "sha",
+      "repo": {
+        "git_refs_url": "git-refs-url{/sha}"
+      }
+    },
+    "_links": {
+      "comments": {
+        "href": "comments-url"
+      }
+    }
+  }
+}
+EOF
+      }
+      Before 'setup_event_file'
+
+      It 'Fails due to merge conflict'
+        When run cherry_pick 'branch' "${git_repository}" 'backport-branch' "${merge_commit_sha}"
+        The value "$(cd "${GITHUB_WORKSPACE}" && git show backport-branch:file)" should equal "conflict"
+        The output should match pattern "::error::Unable to cherry-pick commit ${merge_commit_sha} on top of branch 'branch'.\n\nThis pull request needs to be backported manually.\nError:\n\`\`\`\nAuto-merging file
+CONFLICT (content): Merge conflict in file
+error: could not apply *... Merge commit '*'
+hint: after resolving the conflicts, mark the corrected paths
+hint: with 'git add <paths>' or 'git rm <paths>'
+hint: and commit the result with 'git commit'\n\`\`\`
+CURL invoked with:-XPOST -fsSL --output /dev/null -H Accept: application/vnd.github.v3+json -H Authorization: Bearer github-token -H Content-Type: application/json -d {    \"body\": \"Unable to cherry-pick commit * on top of branch 'branch'.\n\nThis pull request needs to be backported manually.\nError:\n\`\`\`\nAuto-merging file
+CONFLICT (content): Merge conflict in file
+error: could not apply *... Merge commit '*'
+hint: after resolving the conflicts, mark the corrected paths
+hint: with 'git add <paths>' or 'git rm <paths>'
+hint: and commit the result with 'git commit'\n\`\`\`\"
+  } comments-url"
+        The status should equal 1
+      End
+    End
+
   End
 
   Describe 'push'
