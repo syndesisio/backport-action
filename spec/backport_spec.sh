@@ -193,6 +193,7 @@ EOF
        When call main
        The variable 'delete_branch_args' should equal 'head/sha'
        The variable 'backport_args' should be undefined
+       The output should include '::debug::HOME'
        The status should be success
      End
    End
@@ -224,6 +225,7 @@ EOF
        When call main
        The variable 'delete_branch_args' should be undefined
        The variable 'backport_args' should be undefined
+       The output should include '::debug::HOME'
        The status should be success
      End
    End
@@ -260,6 +262,7 @@ EOF
        When call main
        The variable 'delete_branch_args' should be undefined
        The variable 'backport_args[*]' should equal '123 branch1 123 branch2'
+       The output should include '::debug::HOME'
        The status should be success
      End
    End
@@ -302,7 +305,7 @@ EOF
        When run main
        The variable 'delete_branch_args' should be undefined
        The variable 'backport_args[*]' should be undefined
-       The output should equal '::error::INPUT_TOKEN is was not provided, by default it should be set to {{ github.token }}'
+       The output should include '::error::INPUT_TOKEN is was not provided, by default it should be set to {{ github.token }}'
        The status should equal 1
      End
    End
