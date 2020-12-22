@@ -138,15 +138,23 @@ backport() {
 }
 
 delete_branch() {
-  local ref=$1
-  local refs
-  refs=$(tmp=$(jq --raw-output .pull_request.head.repo.git_refs_url "${GITHUB_EVENT_PATH}"); echo "${tmp%{*}")
+  local branch=$1
+  local refs_url
+  refs_url=$(tmp=$(jq --raw-output .pull_request.head.repo.git_refs_url "${GITHUB_EVENT_PATH}"); echo "${tmp%{*}")
 
-  curl -XDELETE -fsSL \
+  local status
+  status=$(curl -XDELETE -fsSL \
     --output /dev/null \
+    -w '%{http_code}' \
     -H 'Accept: application/vnd.github.v3+json' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    "$refs/$ref"
+    "$refs_url/heads/$branch")
+
+  if [[ "${status}" == 204 || "${status}" == 422 ]]; then
+    return 0
+  else
+    fail "Unable to delete pull request branch '${branch}'. Please delete it manually."
+  fi
 }
 
 check_token_is_defined() {
@@ -174,7 +182,7 @@ main() {
 
   if [[ "$state" == "closed" && "$login" == "github-actions[bot]" && "$title" == '[Backport '* ]]; then
     check_token_is_defined
-    delete_branch "head/$(jq --raw-output .pull_request.head.ref "${GITHUB_EVENT_PATH}")"
+    delete_branch "$(jq --raw-output .pull_request.head.ref "${GITHUB_EVENT_PATH}")"
     return
   fi
 
