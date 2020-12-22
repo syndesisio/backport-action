@@ -149,6 +149,12 @@ check_token_is_defined() {
 }
 
 main() {
+  echo "::debug::environment"
+  for e in $(printenv)
+  do
+    echo "::debug::${e}"
+  done
+
   local state
   state=$(jq --raw-output .pull_request.state "${GITHUB_EVENT_PATH}")
   local login
