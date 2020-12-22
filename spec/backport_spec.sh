@@ -203,11 +203,6 @@ EOF
   End
 
   Describe 'delete_branch'
-    # mock curl
-    curl() {
-      export curl_args="$*"
-    }
-
     setup_event_file() {
     cat<<EOF>"${GITHUB_EVENT_PATH}"
 {
@@ -222,10 +217,39 @@ EOF
 EOF
     }
     Before 'setup_event_file'
-    It 'Deletes branches'
-      When call delete_branch head/sha
-      The variable 'curl_args' should equal "-XDELETE -fsSL --output /dev/null -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} git-refs-url/head/sha"
+
+    Describe 'Happy path'
+      curl_args="$(mktemp)"
+      # mock curl
+      curl() {
+        echo "$*" > "${curl_args}"
+        echo 204
+      }
+
+      After "rm \"${curl_args}\""
+
+      It 'Deletes branches'
+        When call delete_branch backport/123-to-branch
+        The value "$(cat "${curl_args}")" should equal "-XDELETE -fsSL --output /dev/null -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} git-refs-url/heads/backport/123-to-branch"
+      End
     End
+
+    Describe 'REST API returns 442'
+      curl_args="$(mktemp)"
+      # mock curl
+      curl() {
+        echo "$*" > "${curl_args}"
+        echo 422
+      }
+
+      After "rm \"${curl_args}\""
+
+      It 'Doesn''t fail on deleted branches'
+        When call delete_branch backport/123-to-branch
+        The value "$(cat "${curl_args}")" should equal "-XDELETE -fsSL --output /dev/null -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} git-refs-url/heads/backport/123-to-branch"
+      End
+    End
+
   End
 
   Describe 'main'
@@ -250,7 +274,7 @@ EOF
     "labels": [],
     "title": "[Backport branch] Something",
     "head": {
-      "ref": "sha",
+      "ref": "backport/123-to-branch",
       "repo": {
         "git_refs_url": "git-refs-url{/sha}"
       }
@@ -262,7 +286,7 @@ EOF
      Before 'setup_event_file'
      It 'Deletes backport branches when pull request is closed'
        When call main
-       The variable 'delete_branch_args' should equal 'head/sha'
+       The variable 'delete_branch_args' should equal 'backport/123-to-branch'
        The variable 'backport_args' should be undefined
        The output should include '::debug::HOME'
        The status should be success
@@ -280,13 +304,7 @@ EOF
       "login": "github-actions[bot]"
     },
     "labels": [],
-    "title": "[Backport branch] Something",
-    "head": {
-      "ref": "sha",
-      "repo": {
-        "git_refs_url": "git-refs-url{/sha}"
-      }
-    }
+    "title": "[Backport branch] Something"
   }
 }
 EOF
