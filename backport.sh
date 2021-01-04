@@ -2,11 +2,29 @@
 set -e
 set -o pipefail
 
+http_post() {
+  local url=$1
+  local json=$2
+
+  if ! result=$(curl -XPOST -fsL \
+    --output /dev/null \
+    -w '{"http_code":%{http_code},"url_effective":"%{url_effective}"}' \
+    -H 'Accept: application/vnd.github.v3+json' \
+    -H "Authorization: Bearer ${INPUT_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "${json}" \
+    "${url}"); then
+    local message
+    message=$(echo "${result}"| jq -r -s 'add | (.http_code|tostring) + ": " + .message + " effective url: " + .url_effective')
+    echo "::error::Error in HTTP POST to ${url} of \`${json}\`: ${message}"
+  fi
+}
+
 fail() {
   local message=$1
   local error=$2
 
-  echo "::error::${message}"
+  echo "::error::${message} (${error})"
 
   local comment="${message}"
   if [ -n "${error}" ]
@@ -19,13 +37,7 @@ fail() {
   local comments_url
   comments_url=$(jq --raw-output .pull_request._links.comments.href "${GITHUB_EVENT_PATH}")
 
-  curl -XPOST -fsSL \
-    --output /dev/null \
-    -H 'Accept: application/vnd.github.v3+json' \
-    -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "${comment_json}" \
-    "${comments_url}"
+  http_post "${comments_url}" "${comment_json}"
 
   exit 1
 }
@@ -101,13 +113,7 @@ create_pull_request() {
     \"base\": \"${branch}\" \
   }"
 
-  curl -XPOST -fsSL \
-    --output /dev/null \
-    -H 'Accept: application/vnd.github.v3+json' \
-    -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "${pull_request}" \
-    "${pulls_url}"
+  http_post "${pulls_url}" "${pull_request}"
 }
 
 backport() {
@@ -143,7 +149,7 @@ delete_branch() {
   refs_url=$(tmp=$(jq --raw-output .pull_request.head.repo.git_refs_url "${GITHUB_EVENT_PATH}"); echo "${tmp%{*}")
 
   local status
-  status=$(curl -XDELETE -fsSL \
+  status=$(curl -XDELETE -fsL \
     --fail \
     --output /dev/null \
     -w '%{http_code}' \
