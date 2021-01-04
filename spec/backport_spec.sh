@@ -25,6 +25,34 @@ Describe 'Backport action'
     The output should equal 'eC1hY2Nlc3MtdG9rZW46Z2l0aHViLXRva2Vu'
   End
 
+  Describe 'fail'
+    # mock http_post
+    http_post() {
+      echo "http_post invoked with: $*"
+    }
+    setup_event_file() {
+        cat<<EOF>"${GITHUB_EVENT_PATH}"
+{
+  "pull_request": {
+    "_links": {
+      "comments": {
+        "href": "comments-url"
+      }
+    }
+  }
+}
+EOF
+    }
+    Before 'setup_event_file'
+
+    It 'Handles reports failures'
+      When run fail message error
+      The output should equal '::error::message (error)
+http_post invoked with: comments-url {"body":"message\n\n<details><summary>Error</summary><pre>error</pre></details>"}'
+      The status should equal 1
+    End
+  End
+
   Describe 'cherry_pick'
 
     Describe 'Cherry pick succeeds'
@@ -54,9 +82,9 @@ Describe 'Backport action'
     End
 
     Describe 'Merge conflict'
-      # mock curl
-      curl() {
-        echo "CURL invoked with:$*"
+      # mock http_post
+      http_post() {
+        echo "http_post invoked with:$*"
       }
 
       setup_repo() {
@@ -117,8 +145,13 @@ EOF
       It 'Fails due to merge conflict'
         When run cherry_pick 'branch' "${git_repository}" 'backport-branch' "${merge_commit_sha}"
         The value "$(cd "${GITHUB_WORKSPACE}" && git show backport-branch:file)" should equal "conflict"
-        The output should match pattern "::error::Unable to cherry-pick commit ${merge_commit_sha} on top of branch \`branch\`.\n\nThis pull request needs to be backported manually.
-CURL invoked with:-XPOST -fsSL --output /dev/null -H Accept: application/vnd.github.v3+json -H Authorization: Bearer github-token -H Content-Type: application/json -d {\"body\":\"Unable to cherry-pick commit * on top of branch \`branch\`.\\n\\nThis pull request needs to be backported manually.\\n\\n<details><summary>Error</summary><pre>Auto-merging file\\nCONFLICT (content): Merge conflict in file\\nerror: could not apply *... Merge commit '*'\\nhint: after resolving the conflicts, mark the corrected paths\\nhint: with 'git add <paths>' or 'git rm <paths>'\\nhint: and commit the result with 'git commit'</pre></details>\"} comments-url"
+        The output should match pattern "::error::Unable to cherry-pick commit ${merge_commit_sha} on top of branch \`branch\`.\n\nThis pull request needs to be backported manually. (Auto-merging file
+CONFLICT (content): Merge conflict in file
+error: could not apply *... Merge commit '*'
+hint: after resolving the conflicts, mark the corrected paths
+hint: with 'git add <paths>' or 'git rm <paths>'
+hint: and commit the result with 'git commit')
+http_post invoked with:comments-url {\"body\":\"Unable to cherry-pick commit * on top of branch \`branch\`.\\n\\nThis pull request needs to be backported manually.\\n\\n<details><summary>Error</summary><pre>Auto-merging file\\nCONFLICT (content): Merge conflict in file\\nerror: could not apply *... Merge commit '*'\\nhint: after resolving the conflicts, mark the corrected paths\\nhint: with 'git add <paths>' or 'git rm <paths>'\\nhint: and commit the result with 'git commit'</pre></details>\"}"
         The status should equal 1
       End
     End
@@ -152,14 +185,14 @@ CURL invoked with:-XPOST -fsSL --output /dev/null -H Accept: application/vnd.git
   End
 
   Describe 'create_pull_request'
-    # mock curl
-    curl() {
-      export curl_args="$*"
+    # mock http_post
+    http_post() {
+      export http_post_args="$*"
     }
 
     It 'Creates pull requests'
       When call create_pull_request branch backport-branch title 123 url
-      The variable 'curl_args' should equal "-XPOST -fsSL --output /dev/null -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} -H Content-Type: application/json -d {    \"title\": \"[Backport branch] title\",     \"body\": \"Backport of #123\",     \"head\": \"backport-branch\",     \"base\": \"branch\"   } url"
+      The variable 'http_post_args' should equal "url {    \"title\": \"[Backport branch] title\",     \"body\": \"Backport of #123\",     \"head\": \"backport-branch\",     \"base\": \"branch\"   }"
     End
   End
 
@@ -230,7 +263,7 @@ EOF
 
       It 'Deletes branches'
         When call delete_branch backport/123-to-branch
-        The value "$(cat "${curl_args}")" should equal "-XDELETE -fsSL --fail --output /dev/null -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} git-refs-url/heads/backport/123-to-branch"
+        The value "$(cat "${curl_args}")" should equal "-XDELETE -fsL --fail --output /dev/null -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} git-refs-url/heads/backport/123-to-branch"
       End
     End
 
@@ -246,7 +279,7 @@ EOF
 
       It 'Doesn''t fail on deleted branches'
         When call delete_branch backport/123-to-branch
-        The value "$(cat "${curl_args}")" should equal "-XDELETE -fsSL --fail --output /dev/null -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} git-refs-url/heads/backport/123-to-branch"
+        The value "$(cat "${curl_args}")" should equal "-XDELETE -fsL --fail --output /dev/null -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} git-refs-url/heads/backport/123-to-branch"
       End
     End
 
