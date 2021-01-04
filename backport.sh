@@ -151,16 +151,20 @@ delete_branch() {
   local status
   local output
 
-  eval "$(curl -XDELETE -v -fsL \
+  local status
+  local output
+  {
+    IFS=$'\n' read -r -d '' status;
+    IFS=$'\n' read -r -d '' output
+  } < <(curl -XDELETE -v -fsL \
     --fail \
     --output /dev/stderr \
     -w '%{http_code}' \
     -H 'Accept: application/vnd.github.v3+json' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
     "$refs_url/heads/$branch" \
-    2> >(o=$(sed -e s/^/::debug::/); echo output="$'${o}'") \
-    > >(s=$(cat); echo status="$'${s}'")
-  )"
+    2> >(stderr="$(sed -e s/^/::debug::/)"; printf '\0%s' "${stderr}")
+  )
 
   if [[ "${status}" == 204 || "${status}" == 422 ]]; then
     return 0
@@ -177,16 +181,17 @@ check_token() {
 
   local status
   local output
-
-  eval "$(curl -v -fsL \
+  {
+    IFS=$'\n' read -r -d '' status;
+    IFS=$'\n' read -r -d '' output
+  } < <(curl -v -fsL \
     --fail \
     --output /dev/stderr \
     -w '%{http_code}' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
     "https://api.github.com/rate_limit" \
-    2> >(o=$(sed -e s/^/::debug::/); echo output="$'${o}'") \
-    > >(s=$(cat); echo status="$'${s}'")
-  )"
+    2> >(stderr="$(sed -e s/^/::debug::/)"; printf '\0%s' "${stderr}")
+  )
 
   echo "${output}"
 
