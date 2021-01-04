@@ -12,7 +12,7 @@ http_post() {
     -H 'Accept: application/vnd.github.v3+json' \
     -H \'"Authorization: Bearer ${INPUT_TOKEN}"\' \
     -H 'Content-Type: application/json' \
-    -d "${json}" \
+    -d \'"${json}"\' \
     "${url}" 2> >(sed -e s/^/::debug::/)); then
     local message
     message=$(echo "${result}"| jq -r -s 'add | (.http_code|tostring) + ": " + .message + " effective url: " + .url_effective')
