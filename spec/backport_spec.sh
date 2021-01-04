@@ -520,7 +520,7 @@ EOF
       The output should equal '::debug::curl verbose output
 ::debug::curl verbose output (second line)
 ::debug::result={"http_code":401,"url_effective":"url"}
-::error::Error in HTTP POST to url of '"\`"'{"json":"data"}'"\`"': 401:  effective url: url'
+::error::Error in HTTP POST to url of '"\`"'{"json":"data"}'"\`"': 401, effective url: url'
       The status should equal 1
     End
   End
