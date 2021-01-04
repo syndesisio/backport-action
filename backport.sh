@@ -5,15 +5,22 @@ set -o pipefail
 http_post() {
   local url=$1
   local json=$2
+  local output_f
 
-  if ! result=$(curl -XPOST -v -fsL \
+  output_f="$(mktemp)"
+
+  result=$(curl -XPOST -v -fsL \
     --output /dev/stderr \
     -w '{"http_code":%{http_code},"url_effective":"%{url_effective}"}' \
     -H 'Accept: application/vnd.github.v3+json' \
     -H \'"Authorization: Bearer ${INPUT_TOKEN}"\' \
     -H 'Content-Type: application/json' \
     -d \'"${json}"\' \
-    "${url}" 2> >(sed -e s/^/::debug::/)); then
+    "${url}" 2> "${output_f}")
+
+  sed -s /^/::debug::/ "${output_f}"
+  if [[ ! ${result} ]]
+  then
     local message
     message=$(echo "${result}"| jq -r -s 'add | (.http_code|tostring) + ": " + .message + " effective url: " + .url_effective')
     echo "::error::Error in HTTP POST to ${url} of \`${json}\`: ${message}"
