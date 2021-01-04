@@ -9,21 +9,24 @@ http_post() {
 
   output_f="$(mktemp)"
 
-  result=$(curl -XPOST -v -fsL \
+  local status
+  result=$(curl -XPOST --fail -v -fsL \
     --output /dev/stderr \
     -w '{"http_code":%{http_code},"url_effective":"%{url_effective}"}' \
     -H 'Accept: application/vnd.github.v3+json' \
     -H \'"Authorization: Bearer ${INPUT_TOKEN}"\' \
     -H 'Content-Type: application/json' \
     -d \'"${json}"\' \
-    "${url}" 2> "${output_f}")
+    "${url}" 2> "${output_f}" || true)
 
-  sed -e /^/::debug::/ "${output_f}"
-  if [[ ! ${result} ]]
+  sed -e 's/^/::debug::/' "${output_f}"
+  echo "::debug::result=${result}"
+  if [[ $(echo "${result}" |jq -r .http_code) != "2*" ]]
   then
     local message
     message=$(echo "${result}"| jq -r -s 'add | (.http_code|tostring) + ": " + .message + " effective url: " + .url_effective')
     echo "::error::Error in HTTP POST to ${url} of \`${json}\`: ${message}"
+    exit 1
   fi
 }
 
@@ -169,7 +172,7 @@ delete_branch() {
     2> "${output_f}" || true
   )
 
-  sed -e s/^/::debug::/ "${output_f}"
+  sed -e 's/^/::debug::/' "${output_f}"
   rm "${output_f}"
 
   echo "::debug::status=${status}"
@@ -199,7 +202,7 @@ check_token() {
     2> "${output_f}" || true
   )
 
-  sed -e s/^/::debug::/ "${output_f}"
+  sed -e 's/^/::debug::/' "${output_f}"
   rm "${output_f}"
 
   echo "::debug::status=${status}"

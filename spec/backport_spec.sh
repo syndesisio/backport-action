@@ -503,4 +503,26 @@ EOF
     End
   End
 
+  Describe 'http_post'
+
+    It 'Should handle errors'
+      # mock curl
+      curl_args="$(mktemp)"
+      curl() {
+        echo "$*" > "${curl_args}"
+        echo "curl verbose output" 1>&2
+        echo "curl verbose output (second line)" 1>&2
+        echo '{"http_code":401,"url_effective":"url"}'
+        exit 22
+      }
+
+      When run http_post url '{"json":"data"}'
+      The output should equal '::debug::curl verbose output
+::debug::curl verbose output (second line)
+::debug::result={"http_code":401,"url_effective":"url"}
+::error::Error in HTTP POST to url of '"\`"'{"json":"data"}'"\`"': 401:  effective url: url'
+      The status should equal 1
+    End
+  End
+
 End
