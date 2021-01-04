@@ -263,7 +263,7 @@ EOF
 
       It 'Deletes branches'
         When call delete_branch backport/123-to-branch
-        The value "$(cat "${curl_args}")" should equal "-XDELETE -v -fsL --fail --output /dev/stderr -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} git-refs-url/heads/backport/123-to-branch"
+        The value "$(cat "${curl_args}")" should equal "-XDELETE -v -fsL --fail --output /dev/stderr -w %{http_code} -H Accept: application/vnd.github.v3+json -H 'Authorization: Bearer ${INPUT_TOKEN}' git-refs-url/heads/backport/123-to-branch"
       End
     End
 
@@ -279,7 +279,7 @@ EOF
 
       It 'Doesn''t fail on deleted branches'
         When call delete_branch backport/123-to-branch
-        The value "$(cat "${curl_args}")" should equal "-XDELETE -v -fsL --fail --output /dev/stderr -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} git-refs-url/heads/backport/123-to-branch"
+        The value "$(cat "${curl_args}")" should equal "-XDELETE -v -fsL --fail --output /dev/stderr -w %{http_code} -H Accept: application/vnd.github.v3+json -H 'Authorization: Bearer ${INPUT_TOKEN}' git-refs-url/heads/backport/123-to-branch"
       End
     End
 
@@ -465,6 +465,7 @@ EOF
           echo "curl verbose output" 1>&2
           echo "curl verbose output (second line)" 1>&2
           echo 401
+          exit 0
         }
 
         After "rm \"${curl_args}\""
@@ -475,7 +476,7 @@ EOF
 ::debug::curl verbose output (second line)
 ::debug::status=401
 ::error::Provided INPUT_TOKEN is not valid according to the rate API'
-          The value "$(cat "${curl_args}")" should equal '-v -fsL --fail --output /dev/stderr -w %{http_code} -H Authorization: Bearer github-token https://api.github.com/rate_limit'
+          The value "$(cat "${curl_args}")" should equal '-v -fsL --fail --output /dev/stderr -w %{http_code} -H '"'"'Authorization: Bearer github-token'"'"' https://api.github.com/rate_limit'
           The status should equal 1
         End
 
@@ -485,6 +486,7 @@ EOF
           echo "curl verbose output" 1>&2
           echo "curl verbose output (second line)" 1>&2
           echo 200
+          exit 0
         }
 
         It 'Succeeds when rate API returns status 2xx'
@@ -492,7 +494,7 @@ EOF
           The output should equal '::debug::curl verbose output
 ::debug::curl verbose output (second line)
 ::debug::status=200'
-          The value "$(cat "${curl_args}")" should equal '-v -fsL --fail --output /dev/stderr -w %{http_code} -H Authorization: Bearer github-token https://api.github.com/rate_limit'
+          The value "$(cat "${curl_args}")" should equal '-v -fsL --fail --output /dev/stderr -w %{http_code} -H '"'"'Authorization: Bearer github-token'"'"' https://api.github.com/rate_limit'
           The status should equal 0
         End
       End
