@@ -18,7 +18,7 @@ http_post() {
     -d \'"${json}"\' \
     "${url}" 2> "${output_f}")
 
-  sed -s /^/::debug::/ "${output_f}"
+  sed -e /^/::debug::/ "${output_f}"
   if [[ ! ${result} ]]
   then
     local message
