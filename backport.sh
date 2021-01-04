@@ -6,14 +6,14 @@ http_post() {
   local url=$1
   local json=$2
 
-  if ! result=$(curl -XPOST -fsL \
-    --output /dev/null \
+  if ! result=$(curl -XPOST -v -fsL \
+    --output /dev/stderr \
     -w '{"http_code":%{http_code},"url_effective":"%{url_effective}"}' \
     -H 'Accept: application/vnd.github.v3+json' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
     -H "Content-Type: application/json" \
     -d "${json}" \
-    "${url}"); then
+    "${url}" 2> >(sed -e s/^/::debug::/)); then
     local message
     message=$(echo "${result}"| jq -r -s 'add | (.http_code|tostring) + ": " + .message + " effective url: " + .url_effective')
     echo "::error::Error in HTTP POST to ${url} of \`${json}\`: ${message}"
@@ -149,13 +149,13 @@ delete_branch() {
   refs_url=$(tmp=$(jq --raw-output .pull_request.head.repo.git_refs_url "${GITHUB_EVENT_PATH}"); echo "${tmp%{*}")
 
   local status
-  status=$(curl -XDELETE -fsL \
+  status=$(curl -XDELETE -v -fsL \
     --fail \
-    --output /dev/null \
+    --output /dev/stderr \
     -w '%{http_code}' \
     -H 'Accept: application/vnd.github.v3+json' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    "$refs_url/heads/$branch" || true)
+    "$refs_url/heads/$branch" 2> >(sed -e s/^/::debug::/))
 
   if [[ "${status}" == 204 || "${status}" == 422 ]]; then
     return 0
@@ -170,14 +170,21 @@ check_token() {
     exit 1
   fi
 
-  local status
-  status=$(curl -fsL \
-    --output /dev/null \
+  local output
+  output=$(curl -v -fsL \
+    --fail \
+    --output /dev/stderr \
     -w '%{http_code}' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    "https://api.github.com/rate_limit")
+    "https://api.github.com/rate_limit" 2> >(sed -e s/^/::debug::/))
 
-  if [[ "${status}" != "2*" ]]
+  echo "${output}" |sed 1d
+
+  local status
+  status=$(echo "${output}" | head -1)
+
+  echo "::debug::status=${status}"
+  if [[ ${status} != 200 ]]
   then
     echo '::error::Provided INPUT_TOKEN is not valid according to the rate API'
     exit 1
