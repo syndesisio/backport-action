@@ -164,9 +164,22 @@ delete_branch() {
   fi
 }
 
-check_token_is_defined() {
+check_token() {
   if [[ -z ${INPUT_TOKEN+x} ]]; then
     echo '::error::INPUT_TOKEN is was not provided, by default it should be set to {{ github.token }}'
+    exit 1
+  fi
+
+  local status
+  status=$(curl -fsL \
+    --output /dev/null \
+    -w '%{http_code}' \
+    -H "Authorization: Bearer ${INPUT_TOKEN}" \
+    "https://api.github.com/rate_limit")
+
+  if [[ "${status}" != "2*" ]]
+  then
+    echo '::error::Provided INPUT_TOKEN is not valid according to the rate API'
     exit 1
   fi
 }
@@ -188,7 +201,7 @@ main() {
   merged=$(jq --raw-output .pull_request.merged "${GITHUB_EVENT_PATH}")
 
   if [[ "$state" == "closed" && "$login" == "github-actions[bot]" && "$title" == '[Backport '* ]]; then
-    check_token_is_defined
+    check_token
     delete_branch "$(jq --raw-output .pull_request.head.ref "${GITHUB_EVENT_PATH}")"
     return
   fi
@@ -209,7 +222,7 @@ main() {
     # label needs to be `backport <name of the branch>`
     if [[ "${label}" == 'backport '* ]]; then
       local branch=${label#* }
-      check_token_is_defined
+      check_token
       backport "${number}" "${branch}"
     fi
   done

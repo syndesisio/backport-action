@@ -295,9 +295,14 @@ EOF
       export backport_args+=("$*")
     }
 
-   Describe 'Pull request was closed'
-     setup_event_file() {
-     cat<<EOF>"${GITHUB_EVENT_PATH}"
+    Describe 'Token is valid'
+      check_token() {
+        return
+      }
+
+      Describe 'Pull request was closed'
+        setup_event_file() {
+        cat<<EOF>"${GITHUB_EVENT_PATH}"
 {
   "pull_request": {
     "state": "closed",
@@ -315,20 +320,62 @@ EOF
   }
 }
 EOF
-     }
-     Before 'setup_event_file'
-     It 'Deletes backport branches when pull request is closed'
-       When call main
-       The variable 'delete_branch_args' should equal 'backport/123-to-branch'
-       The variable 'backport_args' should be undefined
-       The output should include '::debug::HOME'
-       The status should be success
-     End
-   End
+        }
 
-   Describe 'Pull request not merged'
-     setup_event_file() {
-     cat<<EOF>"${GITHUB_EVENT_PATH}"
+        Before 'setup_event_file'
+
+        It 'Deletes backport branches when pull request is closed'
+          When call main
+          The variable 'delete_branch_args' should equal 'backport/123-to-branch'
+          The variable 'backport_args' should be undefined
+          The output should include '::debug::HOME'
+          The status should be success
+        End
+      End
+
+      Describe 'Pull request merged'
+        setup_event_file() {
+        cat<<EOF>"${GITHUB_EVENT_PATH}"
+{
+  "number": 123,
+  "pull_request": {
+    "state": "merged",
+    "merged": true,
+    "labels": [
+      {
+        "name": "backport branch1"
+      },
+      {
+        "name": "backport branch2"
+      }
+    ],
+    "title": "[Backport branch] Something",
+    "head": {
+      "ref": "sha",
+      "repo": {
+        "git_refs_url": "git-refs-url{/sha}"
+      }
+    }
+  }
+}
+EOF
+      }
+
+        Before 'setup_event_file'
+        It 'Backports merged pull requests'
+          When call main
+          The variable 'delete_branch_args' should be undefined
+          The variable 'backport_args[*]' should equal '123 branch1 123 branch2'
+          The output should include '::debug::HOME'
+          The status should be success
+        End
+      End
+
+    End
+
+    Describe 'Pull request not merged'
+      setup_event_file() {
+      cat<<EOF>"${GITHUB_EVENT_PATH}"
 {
   "pull_request": {
     "state": "open",
@@ -341,20 +388,24 @@ EOF
   }
 }
 EOF
-     }
-     Before 'setup_event_file'
-     It 'Doesn''t backport non-merged pull requests'
-       When call main
-       The variable 'delete_branch_args' should be undefined
-       The variable 'backport_args' should be undefined
-       The output should include '::debug::HOME'
-       The status should be success
-     End
-   End
+      }
+      Before 'setup_event_file'
+      It 'Doesn''t backport non-merged pull requests'
+        When call main
+        The variable 'delete_branch_args' should be undefined
+        The variable 'backport_args' should be undefined
+        The output should include '::debug::HOME'
+        The status should be success
+      End
+    End
 
-   Describe 'Pull request merged'
-     setup_event_file() {
-     cat<<EOF>"${GITHUB_EVENT_PATH}"
+    Describe 'INPUT_TOKEN not set'
+      remove_input_token() {
+        unset INPUT_TOKEN
+      }
+
+      setup_event_file() {
+      cat<<EOF>"${GITHUB_EVENT_PATH}"
 {
   "number": 123,
   "pull_request": {
@@ -378,59 +429,52 @@ EOF
   }
 }
 EOF
-     }
-     Before 'setup_event_file'
-     It 'Backports merged pull requests'
-       When call main
-       The variable 'delete_branch_args' should be undefined
-       The variable 'backport_args[*]' should equal '123 branch1 123 branch2'
-       The output should include '::debug::HOME'
-       The status should be success
-     End
-   End
-
-   Describe 'INPUT_TOKEN not set'
-     remove_input_token() {
-       unset INPUT_TOKEN
-     }
-     Before 'remove_input_token'
-
-     setup_event_file() {
-     cat<<EOF>"${GITHUB_EVENT_PATH}"
-{
-  "number": 123,
-  "pull_request": {
-    "state": "merged",
-    "merged": true,
-    "labels": [
-      {
-        "name": "backport branch1"
-      },
-      {
-        "name": "backport branch2"
       }
-    ],
-    "title": "[Backport branch] Something",
-    "head": {
-      "ref": "sha",
-      "repo": {
-        "git_refs_url": "git-refs-url{/sha}"
-      }
-    }
-  }
-}
-EOF
-     }
-     Before 'setup_event_file'
 
-     It 'Stops working'
-       When run main
-       The variable 'delete_branch_args' should be undefined
-       The variable 'backport_args[*]' should be undefined
-       The output should include '::error::INPUT_TOKEN is was not provided, by default it should be set to {{ github.token }}'
-       The status should equal 1
-     End
-   End
+      Before 'setup_event_file'
+      Before 'remove_input_token'
+
+      It 'Stops working'
+        When run main
+        The variable 'delete_branch_args' should be undefined
+        The variable 'backport_args[*]' should be undefined
+        The output should include '::error::INPUT_TOKEN is was not provided, by default it should be set to {{ github.token }}'
+        The status should equal 1
+      End
+    End
+
+    Describe 'Token checks'
+      Describe 'Token not set'
+        remove_input_token() {
+          unset INPUT_TOKEN
+        }
+        Before 'remove_input_token'
+
+        It 'Checks INPUT_TOKEN is defined'
+          When run check_token
+          The output should include '::error::INPUT_TOKEN is was not provided, by default it should be set to {{ github.token }}'
+          The status should equal 1
+        End
+      End
+
+      Describe 'Token is set'
+        curl_args="$(mktemp)"
+        # mock curl
+        curl() {
+          echo "$*" > "${curl_args}"
+          echo 204
+        }
+
+        After "rm \"${curl_args}\""
+
+        It 'Checks token is valid via rate API'
+          When run check_token
+          The output should include '::error::Provided INPUT_TOKEN is not valid according to the rate API'
+          The value "$(cat "${curl_args}")" should equal '-fsL --output /dev/null -w %{http_code} -H Authorization: Bearer github-token https://api.github.com/rate_limit'
+          The status should equal 1
+        End
+      End
+    End
   End
 
 End
