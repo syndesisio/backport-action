@@ -24,7 +24,7 @@ http_post() {
   if [[ $(echo "${result}" |jq -r .http_code) != "2*" ]]
   then
     local message
-    message=$(echo "${result}"| jq -r -s 'add | (.http_code|tostring) + ": " + .message + " effective url: " + .url_effective')
+    message=$(echo "${result}"| jq -r -s 'add | (.http_code|tostring) + ", effective url: " + .url_effective')
     echo "::error::Error in HTTP POST to ${url} of \`${json}\`: ${message}"
     exit 1
   fi
