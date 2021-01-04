@@ -149,13 +149,18 @@ delete_branch() {
   refs_url=$(tmp=$(jq --raw-output .pull_request.head.repo.git_refs_url "${GITHUB_EVENT_PATH}"); echo "${tmp%{*}")
 
   local status
-  status=$(curl -XDELETE -v -fsL \
+  local output
+
+  eval "$(curl -XDELETE -v -fsL \
     --fail \
     --output /dev/stderr \
     -w '%{http_code}' \
     -H 'Accept: application/vnd.github.v3+json' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    "$refs_url/heads/$branch" 2> >(sed -e s/^/::debug::/))
+    "$refs_url/heads/$branch" \
+    2> >(o=$(sed -e s/^/::debug::/); echo output="$'${o}'") \
+    > >(s=$(cat); echo status="$'${s}'")
+  )"
 
   if [[ "${status}" == 204 || "${status}" == 422 ]]; then
     return 0
@@ -170,18 +175,20 @@ check_token() {
     exit 1
   fi
 
+  local status
   local output
-  output=$(curl -v -fsL \
+
+  eval "$(curl -v -fsL \
     --fail \
     --output /dev/stderr \
     -w '%{http_code}' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    "https://api.github.com/rate_limit" 2> >(sed -e s/^/::debug::/))
+    "https://api.github.com/rate_limit" \
+    2> >(o=$(sed -e s/^/::debug::/); echo output="$'${o}'") \
+    > >(s=$(cat); echo status="$'${s}'")
+  )"
 
-  echo "${output}" |sed 1d
-
-  local status
-  status=$(echo "${output}" | head -1)
+  echo "${output}"
 
   echo "::debug::status=${status}"
   if [[ ${status} != 200 ]]
