@@ -264,6 +264,7 @@ EOF
       It 'Deletes branches'
         When call delete_branch backport/123-to-branch
         The value "$(cat "${curl_args}")" should equal "-XDELETE -v -fsL --fail --output /dev/stderr -w %{http_code} -H Accept: application/vnd.github.v3+json -H 'Authorization: Bearer ${INPUT_TOKEN}' git-refs-url/heads/backport/123-to-branch"
+      The output should equal '::debug::status=204'
       End
     End
 
@@ -280,6 +281,7 @@ EOF
       It 'Doesn''t fail on deleted branches'
         When call delete_branch backport/123-to-branch
         The value "$(cat "${curl_args}")" should equal "-XDELETE -v -fsL --fail --output /dev/stderr -w %{http_code} -H Accept: application/vnd.github.v3+json -H 'Authorization: Bearer ${INPUT_TOKEN}' git-refs-url/heads/backport/123-to-branch"
+        The output should equal '::debug::status=422'
       End
     End
 
