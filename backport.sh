@@ -10,8 +10,8 @@ http_post() {
     --output /dev/stderr \
     -w '{"http_code":%{http_code},"url_effective":"%{url_effective}"}' \
     -H 'Accept: application/vnd.github.v3+json' \
-    -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    -H "Content-Type: application/json" \
+    -H \'"Authorization: Bearer ${INPUT_TOKEN}"\' \
+    -H 'Content-Type: application/json' \
     -d "${json}" \
     "${url}" 2> >(sed -e s/^/::debug::/)); then
     local message
@@ -161,7 +161,7 @@ delete_branch() {
     --output /dev/stderr \
     -w '%{http_code}' \
     -H 'Accept: application/vnd.github.v3+json' \
-    -H "Authorization: Bearer ${INPUT_TOKEN}" \
+    -H \'"Authorization: Bearer ${INPUT_TOKEN}"\' \
     "$refs_url/heads/$branch" \
     2> >(stderr="$(sed -e s/^/::debug::/)"; printf '\0%s' "${stderr}")
   )
@@ -188,7 +188,7 @@ check_token() {
     --fail \
     --output /dev/stderr \
     -w '%{http_code}' \
-    -H "Authorization: Bearer ${INPUT_TOKEN}" \
+    -H \'"Authorization: Bearer ${INPUT_TOKEN}"\' \
     "https://api.github.com/rate_limit" \
     2> >(stderr="$(sed -e s/^/::debug::/)"; printf '\0%s' "${stderr}")
   )
