@@ -15,7 +15,7 @@ debug() {
   stderr=$(mktemp)
 
   local stdout
-  stdout=$(${cmd[*]} 2> "${stderr}")
+  stdout=$(${cmd} 2> "${stderr}")
 
   local rc=$?
 
