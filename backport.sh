@@ -65,6 +65,7 @@ fail() {
   local error=$2
 
   echo "::error::${message} (${error})"
+  echo '::endgroup::'
 
   local comment="${message}"
   if [ -n "${error}" ]
@@ -104,7 +105,7 @@ cherry_pick() {
 
     set +e
 
-    git checkout -q -b "${backport_branch}" > /dev/null 2>&1 || fail "Unable to checkout branch named \'${branch}\', you might need to create it or use a different label."
+    git checkout -q -b "${backport_branch}" > /dev/null 2>&1 || fail "Unable to checkout branch named \`${branch}\`, you might need to create it or use a different label."
 
     local err
     err=$(git -c user.name="${user_name}" -c user.email="${user_email}" cherry-pick --mainline 1 "${merge_sha}" 2>&1) || fail "Unable to cherry-pick commit ${merge_sha} on top of branch \`${branch}\`.\n\nThis pull request needs to be backported manually." "${err}"
@@ -129,7 +130,7 @@ push() {
 
     set +e
 
-    git -c user.name="${user_name}" -c user.email="${user_email}" -c "http.https://github.com.extraheader=Authorization: basic ${auth}" push -q --set-upstream origin "${backport_branch}" || fail "Unable to push the backported branch, did you try to backport the same PR twice without deleting the ${backport_branch} branch?"
+    git -c user.name="${user_name}" -c user.email="${user_email}" -c "http.https://github.com.extraheader=Authorization: basic ${auth}" push -q --set-upstream origin "${backport_branch}" || fail "Unable to push the backported branch, did you try to backport the same PR twice without deleting the \`${backport_branch}\` branch?"
 
     set -e
   )
@@ -160,6 +161,7 @@ backport() {
   local number=$1
   local branch=$2
 
+  echo '::group::Performing backport'
   echo "::debug::Backporting pull request #${number} to branch ${branch}"
 
   local repository
@@ -181,9 +183,11 @@ backport() {
   pulls_url=$(tmp=$(jq --raw-output .repository.pulls_url "${GITHUB_EVENT_PATH}"); echo "${tmp%{*}")
 
   create_pull_request "${branch}" "${backport_branch}" "${title}" "${number}" "${pulls_url}"
+  echo '::endgroup::'
 }
 
 delete_branch() {
+  echo '::group::Deleting closed pull request branch'
   local branch=$1
   local refs_url
   refs_url=$(tmp=$(jq --raw-output .pull_request.head.repo.git_refs_url "${GITHUB_EVENT_PATH}"); echo "${tmp%{*}")
@@ -207,15 +211,20 @@ delete_branch() {
 
   echo "::debug::status=${status}"
   if [[ "${status}" == 204 || "${status}" == 422 ]]; then
-    return 0
+    echo 'Deleted'
   else
+    echo 'Failed to delete branch'
     fail "Unable to delete pull request branch '${branch}'. Please delete it manually."
   fi
+
+  echo '::endgroup::'
 }
 
 check_token() {
+  echo '::group::Checking token'
   if [[ -z ${INPUT_TOKEN+x} ]]; then
     echo '::error::INPUT_TOKEN is was not provided, by default it should be set to {{ github.token }}'
+    echo '::endgroup::'
     exit 1
   fi
 
@@ -239,8 +248,12 @@ check_token() {
   if [[ ${status} != 200 ]]
   then
     echo '::error::Provided INPUT_TOKEN is not valid according to the rate API'
+    echo '::endgroup::'
     exit 1
   fi
+
+  echo 'Token seems valid'
+  echo '::endgroup::'
 }
 
 main() {
