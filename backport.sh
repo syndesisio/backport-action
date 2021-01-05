@@ -1,26 +1,14 @@
 #!/bin/bash
-set -e
-set -o pipefail
+set -o errexit -o pipefail -o nounset
 
 debug() {
   echo "::debug::running: $*"
 
-  local stderr
-  stderr=$(mktemp)
-
-  local stdout
-  stdout=$("$@" 2> "${stderr}")
+  ("$@" 2> >(sed -e 's/^/::debug::err:/') > >(sed -e 's/^/::debug::out:/'))
 
   local rc=$?
-
-  # shellcheck disable=SC2001
-  echo "${stdout}" | sed -e 's/^/::debug::out:/'
-  sed -e 's/^/::debug::err:/' "${stderr}"
-
-  echo "${stdout}"
-  cat "${stderr}" >&2
-
-  rm "${stderr}"
+  script -q -c 'bash -c "echo -n"' # force flushing stdout so that debug out/err are outputted before rc
+  echo "::debug::rc=${rc}"
 
   return ${rc}
 }
@@ -28,27 +16,22 @@ debug() {
 http_post() {
   local url=$1
   local json=$2
-  local stdout
-  local stderr
 
-  stdout="$(mktemp)"
-  stderr="$(mktemp)"
+  local output
+  output="$(mktemp)"
 
   debug curl -XPOST --fail -v -fsL \
-    --output /dev/stderr \
+    --output "${output}" \
     -w '{"http_code":%{http_code},"url_effective":"%{url_effective}"}' \
     -H 'Accept: application/vnd.github.v3+json' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
     -H 'Content-Type: application/json' \
     -d "${json}" \
-    "${url}" > "${stdout}" 2> "${stderr}" || true
+    "${url}"|| true
 
-  result=$(grep --text -v -e '^::debug::' "${stdout}")
-  grep --text '::debug::' "${stdout}"
-  grep --text '::debug::' "${stderr}"
-
-  rm "${stdout}"
-  rm "${stderr}"
+  local result
+  result=$(cat "${output}")
+  rm "${output}"
 
   echo "::debug::result=${result}"
   if [[ $(echo "${result}" |jq -r .http_code) != "2*" ]]
@@ -62,7 +45,7 @@ http_post() {
 
 fail() {
   local message=$1
-  local error=$2
+  local error=${2:-}
 
   echo "::error::${message} (${error})"
   echo '::endgroup::'
@@ -188,26 +171,24 @@ backport() {
 
 delete_branch() {
   echo '::group::Deleting closed pull request branch'
+
   local branch=$1
   local refs_url
   refs_url=$(tmp=$(jq --raw-output .pull_request.head.repo.git_refs_url "${GITHUB_EVENT_PATH}"); echo "${tmp%{*}")
+  local output
+  output="$(mktemp)"
 
-  local status
-  local output_f
-  output_f="$(mktemp)"
-
-  status=$(curl -XDELETE -v -fsL \
+  debug curl -XDELETE -v -fsL \
     --fail \
-    --output /dev/stderr \
+    --output "${output}" \
     -w '%{http_code}' \
     -H 'Accept: application/vnd.github.v3+json' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    "$refs_url/heads/$branch" \
-    2> "${output_f}" || true
-  )
+    "$refs_url/heads/$branch" || true
 
-  sed -e 's/^/::debug::/' "${output_f}"
-  rm "${output_f}"
+  local status
+  status=$(cat "${output}")
+  rm "${output}"
 
   echo "::debug::status=${status}"
   if [[ "${status}" == 204 || "${status}" == 422 ]]; then
@@ -222,34 +203,26 @@ delete_branch() {
 
 check_token() {
   echo '::group::Checking token'
+
   if [[ -z ${INPUT_TOKEN+x} ]]; then
     echo '::error::INPUT_TOKEN is was not provided, by default it should be set to {{ github.token }}'
     echo '::endgroup::'
     exit 1
   fi
 
-  local status
-  local stdout
-  local stderr
-
-  stdout="$(mktemp)"
-  stderr="$(mktemp)"
+  local output
+  output="$(mktemp)"
 
   debug curl -v -fsL \
     --fail \
-    --output /dev/stderr \
+    --output "${output}" \
     -w '%{http_code}' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    "https://api.github.com/zen" \
-    2> "${stderr}" \
-    > "${stdout}" || true
+    "https://api.github.com/zen" || true
 
-  status=$(grep --text -v -e '^::debug::' "${stdout}")
-  grep --text '::debug::' "${stdout}"
-  grep --text '::debug::' "${stderr}"
-
-  rm "${stdout}"
-  rm "${stderr}"
+  local status
+  status=$(cat "${output}")
+  rm "${output}"
 
   echo "::debug::status=${status}"
   if [[ ${status} != 200 ]]
