@@ -504,24 +504,64 @@ EOF
   End
 
   Describe 'http_post'
+    # mock curl
+    curl_args="$(mktemp)"
+    curl() {
+      echo "$*" > "${curl_args}"
+      echo "curl verbose output" 1>&2
+      echo "curl verbose output (second line)" 1>&2
+      echo '{"http_code":401,"url_effective":"url"}'
+      exit 22
+    }
+
+    After "rm \"${curl_args}\""
 
     It 'Should handle errors'
-      # mock curl
-      curl_args="$(mktemp)"
-      curl() {
-        echo "$*" > "${curl_args}"
-        echo "curl verbose output" 1>&2
-        echo "curl verbose output (second line)" 1>&2
-        echo '{"http_code":401,"url_effective":"url"}'
-        exit 22
-      }
-
       When run http_post url '{"json":"data"}'
-      The output should equal '::debug::curl verbose output
-::debug::curl verbose output (second line)
+      The output should equal '::debug::running: curl -XPOST --fail -v -fsL --output /dev/stderr -w {"http_code":%{http_code},"url_effective":"%{url_effective}"} -H Accept: application/vnd.github.v3+json -H '"'"'Authorization: Bearer github-token'"'"' -H Content-Type: application/json -d '"'"'{"json":"data"}'"'"' url
+::debug::out:{"http_code":401,"url_effective":"url"}
+::debug::err:curl verbose output
+::debug::err:curl verbose output (second line)
 ::debug::result={"http_code":401,"url_effective":"url"}
 ::error::Error in HTTP POST to url of '"\`"'{"json":"data"}'"\`"': 401, effective url: url'
+      The value "$(cat "${curl_args}")" should equal '-XPOST --fail -v -fsL --output /dev/stderr -w {"http_code":%{http_code},"url_effective":"%{url_effective}"} -H Accept: application/vnd.github.v3+json -H '"'"'Authorization: Bearer github-token'"'"' -H Content-Type: application/json -d '"'"'{"json":"data"}'"'"' url'
       The status should equal 1
+    End
+  End
+
+  Describe 'debug'
+    # mock curl
+    curl_args="$(mktemp)"
+    curl() {
+      echo "$*" > "${curl_args}"
+      echo stdout 1
+      echo stderr 1 >&2
+      echo stderr 2 >&2
+      echo stdout 2
+      echo stdout 3
+      echo stderr 3 >&2
+      exit 3
+    }
+
+    After "rm \"${curl_args}\""
+
+    It 'Should debug log and execute'
+      When run debug curl -a -b -c
+      The output should equal '::debug::running: curl -a -b -c
+::debug::out:stdout 1
+::debug::out:stdout 2
+::debug::out:stdout 3
+::debug::err:stderr 1
+::debug::err:stderr 2
+::debug::err:stderr 3
+stdout 1
+stdout 2
+stdout 3'
+      The stderr should equal 'stderr 1
+stderr 2
+stderr 3'
+      The value "$(cat "${curl_args}")" should equal '-a -b -c'
+      The status should equal 3
     End
   End
 
