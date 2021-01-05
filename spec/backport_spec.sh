@@ -518,13 +518,13 @@ EOF
 
     It 'Should handle errors'
       When run http_post url '{"json":"data"}'
-      The output should equal '::debug::running: curl -XPOST --fail -v -fsL --output /dev/stderr -w '"'"'{"http_code":%{http_code},"url_effective":"%{url_effective}"}'"'"' -H '"'"'Accept: application/vnd.github.v3+json'"'"' -H '"'"'Authorization: Bearer github-token'"'"' -H '"'"'Content-Type: application/json'"'"' -d '"'"'{"json":"data"}'"'"' '"'"'url'"'"'
+      The output should equal "::debug::running: curl '-XPOST' '--fail' '-v' '-fsL' '--output' '/dev/stderr' '-w' '"'{"http_code":%{http_code},"url_effective":"%{url_effective}"}'"' '-H' 'Accept: application/vnd.github.v3+json' '-H' 'Authorization: Bearer github-token' '-H' 'Content-Type: application/json' '-d' '"'{"json":"data"}'"' 'url'"'
 ::debug::out:{"http_code":401,"url_effective":"url"}
 ::debug::err:curl verbose output
 ::debug::err:curl verbose output (second line)
 ::debug::result={"http_code":401,"url_effective":"url"}
 ::error::Error in HTTP POST to url of '"\`"'{"json":"data"}'"\`"': 401, effective url: url'
-      The value "$(cat "${curl_args}")" should equal '-XPOST --fail -v -fsL --output /dev/stderr -w '"'"'{"http_code":%{http_code},"url_effective":"%{url_effective}"}'"'"' -H '"'"'Accept: application/vnd.github.v3+json'"'"' -H '"'"'Authorization: Bearer github-token'"'"' -H '"'"'Content-Type: application/json'"'"' -d '"'"'{"json":"data"}'"'"' '"'"'url'"'"
+      The value "$(cat "${curl_args}")" should equal "'-XPOST' '--fail' '-v' '-fsL' '--output' '/dev/stderr' '-w' '"'{"http_code":%{http_code},"url_effective":"%{url_effective}"}'"' '-H' 'Accept: application/vnd.github.v3+json' '-H' 'Authorization: Bearer github-token' '-H' 'Content-Type: application/json' '-d' '"'{"json":"data"}'"' 'url'"
       The status should equal 1
     End
   End
@@ -543,11 +543,16 @@ EOF
       exit 3
     }
 
+    call_debug() {
+      debug curl -a -b -c 'x y' "z w"
+    }
+
     After "rm \"${curl_args}\""
 
     It 'Should debug log and execute'
-      When run debug curl -a -b -c
-      The output should equal '::debug::running: curl -a -b -c
+      #When run debug curl -a -b -c 'x y' "z w"
+      When run call_debug
+      The output should equal "::debug::running: curl '-a' '-b' '-c' 'x y' 'z w'"'
 ::debug::out:stdout 1
 ::debug::out:stdout 2
 ::debug::out:stdout 3
@@ -560,7 +565,7 @@ stdout 3'
       The stderr should equal 'stderr 1
 stderr 2
 stderr 3'
-      The value "$(cat "${curl_args}")" should equal '-a -b -c'
+      The value "$(cat "${curl_args}")" should equal "'-a' '-b' '-c' 'x y' 'z w'"
       The status should equal 3
     End
   End
