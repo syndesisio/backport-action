@@ -2,24 +2,56 @@
 set -e
 set -o pipefail
 
+debug() {
+  local cmd=$*
+
+  echo "::debug::running: ${cmd}"
+
+  local stderr
+  stderr=$(mktemp)
+
+  local stdout
+  stdout=$(${cmd} 2> "${stderr}")
+
+  local rc=$?
+
+  # shellcheck disable=SC2001
+  echo "${stdout}" | sed -e 's/^/::debug::out:/'
+  sed -e 's/^/::debug::err:/' "${stderr}"
+
+  echo "${stdout}"
+  cat "${stderr}" >&2
+
+  rm "${stderr}"
+
+  return ${rc}
+}
+
 http_post() {
   local url=$1
   local json=$2
-  local output_f
+  local stdout
+  local stderr
 
-  output_f="$(mktemp)"
+  stdout="$(mktemp)"
+  stderr="$(mktemp)"
 
-  local status
-  result=$(curl -XPOST --fail -v -fsL \
+  debug curl -XPOST --fail -v -fsL \
     --output /dev/stderr \
     -w '{"http_code":%{http_code},"url_effective":"%{url_effective}"}' \
     -H 'Accept: application/vnd.github.v3+json' \
     -H \'"Authorization: Bearer ${INPUT_TOKEN}"\' \
     -H 'Content-Type: application/json' \
     -d \'"${json}"\' \
-    "${url}" 2> "${output_f}" || true)
+    "${url}" > "${stdout}" 2> "${stderr}" || true
 
-  sed -e 's/^/::debug::/' "${output_f}"
+  result=$(grep -v -e '^::debug::' "${stdout}")
+  grep '::debug::' "${stdout}"
+  grep '::debug::' "${stderr}"
+
+  rm "${stdout}"
+  rm "${stderr}"
+
   echo "::debug::result=${result}"
   if [[ $(echo "${result}" |jq -r .http_code) != "2*" ]]
   then
