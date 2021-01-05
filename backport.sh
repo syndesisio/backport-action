@@ -229,25 +229,32 @@ check_token() {
   fi
 
   local status
-  local output_f
-  output_f="$(mktemp)"
+  local stdout
+  local stderr
 
-  status=$(curl -v -fsL \
+  stdout="$(mktemp)"
+  stderr="$(mktemp)"
+
+  debug curl -v -fsL \
     --fail \
     --output /dev/stderr \
     -w '%{http_code}' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    "https://api.github.com/user" \
-    2> "${output_f}" || true
-  )
+    "https://api.github.com/zen" \
+    2> "${stderr}" \
+    > "${stdout}" || true
 
-  sed -e 's/^/::debug::/' "${output_f}"
-  rm "${output_f}"
+  status=$(grep --text -v -e '^::debug::' "${stdout}")
+  grep --text '::debug::' "${stdout}"
+  grep --text '::debug::' "${stderr}"
+
+  rm "${stdout}"
+  rm "${stderr}"
 
   echo "::debug::status=${status}"
   if [[ ${status} != 200 ]]
   then
-    echo '::error::Provided INPUT_TOKEN is not valid according to the user API'
+    echo '::error::Provided INPUT_TOKEN is not valid according to the zen API'
     echo '::endgroup::'
     exit 1
   fi
