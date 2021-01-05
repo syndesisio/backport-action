@@ -43,9 +43,9 @@ http_post() {
     -d "${json}" \
     "${url}" > "${stdout}" 2> "${stderr}" || true
 
-  result=$(grep -v -e '^::debug::' "${stdout}")
-  grep '::debug::' "${stdout}"
-  grep '::debug::' "${stderr}"
+  result=$(grep --text -v -e '^::debug::' "${stdout}")
+  grep --text '::debug::' "${stdout}"
+  grep --text '::debug::' "${stderr}"
 
   rm "${stdout}"
   rm "${stderr}"
