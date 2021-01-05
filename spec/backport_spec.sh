@@ -519,14 +519,14 @@ EOF
 
     It 'Should handle errors'
       When run http_post url '{"json":"data"}'
-      The output should equal "::debug::running: curl -XPOST --fail -v -fsL --output /dev/stderr -w '"'{"http_code":%{http_code},"url_effective":"%{url_effective}"}'"' -H 'Accept: application/vnd.github.v3+json' -H 'Authorization: Bearer github-token' -H 'Content-Type: application/json' -d '"'{"json":"data"}'"' url"'
+      The output should equal '::debug::running: curl -XPOST --fail -v -fsL --output /dev/stderr -w {"http_code":%{http_code},"url_effective":"%{url_effective}"} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer github-token -H Content-Type: application/json -d {"json":"data"} url
 ::debug::out:{"http_code":401,"url_effective":"url"}
 ::debug::err:curl verbose output
 ::debug::err:curl verbose output (second line)
 ::debug::result={"http_code":401,"url_effective":"url"}
 ::error::Error in HTTP POST to url of '"\`"'{"json":"data"}'"\`"': 401, effective url: url'
-      The value "$(cat "${curl_args}")" should equal "-XPOST --fail -v -fsL --output /dev/stderr -w '"'{"http_code":%{http_code},"url_effective":"%{url_effective}"}'"' -H 'Accept: application/vnd.github.v3+json' -H 'Authorization: Bearer github-token' -H 'Content-Type: application/json' -d '"'{"json":"data"}'"' url
-17"
+      The value "$(cat "${curl_args}")" should equal '-XPOST --fail -v -fsL --output /dev/stderr -w {"http_code":%{http_code},"url_effective":"%{url_effective}"} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer github-token -H Content-Type: application/json -d {"json":"data"} url
+17'
       The status should equal 1
     End
   End
