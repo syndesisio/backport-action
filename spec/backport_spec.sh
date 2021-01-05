@@ -48,6 +48,7 @@ EOF
     It 'Handles reports failures'
       When run fail message error
       The output should equal '::error::message (error)
+::endgroup::
 http_post invoked with: comments-url {"body":"message\n\n<details><summary>Error</summary><pre>error</pre></details>"}'
       The status should equal 1
     End
@@ -151,6 +152,7 @@ error: could not apply *... Merge commit '*'
 hint: after resolving the conflicts, mark the corrected paths
 hint: with 'git add <paths>' or 'git rm <paths>'
 hint: and commit the result with 'git commit')
+::endgroup::
 http_post invoked with:comments-url {\"body\":\"Unable to cherry-pick commit * on top of branch \`branch\`.\\n\\nThis pull request needs to be backported manually.\\n\\n<details><summary>Error</summary><pre>Auto-merging file\\nCONFLICT (content): Merge conflict in file\\nerror: could not apply *... Merge commit '*'\\nhint: after resolving the conflicts, mark the corrected paths\\nhint: with 'git add <paths>' or 'git rm <paths>'\\nhint: and commit the result with 'git commit'</pre></details>\"}"
         The status should equal 1
       End
@@ -231,7 +233,9 @@ EOF
       The variable 'cherry_pick_args' should equal 'branch clone-url backport/123-to-branch merge-commit-sha'
       The variable 'push_args' should equal 'backport/123-to-branch'
       The variable 'create_pull_request_args' should equal 'branch backport/123-to-branch title 123 pulls-url'
-      The output should equal '::debug::Backporting pull request #123 to branch branch'
+      The output should equal '::group::Performing backport
+::debug::Backporting pull request #123 to branch branch
+::endgroup::'
     End
   End
 
@@ -264,7 +268,10 @@ EOF
       It 'Deletes branches'
         When call delete_branch backport/123-to-branch
         The value "$(cat "${curl_args}")" should equal "-XDELETE -v -fsL --fail --output /dev/stderr -w %{http_code} -H Accept: application/vnd.github.v3+json -H 'Authorization: Bearer ${INPUT_TOKEN}' git-refs-url/heads/backport/123-to-branch"
-      The output should equal '::debug::status=204'
+      The output should equal '::group::Deleting closed pull request branch
+::debug::status=204
+Deleted
+::endgroup::'
       End
     End
 
@@ -281,10 +288,38 @@ EOF
       It 'Doesn''t fail on deleted branches'
         When call delete_branch backport/123-to-branch
         The value "$(cat "${curl_args}")" should equal "-XDELETE -v -fsL --fail --output /dev/stderr -w %{http_code} -H Accept: application/vnd.github.v3+json -H 'Authorization: Bearer ${INPUT_TOKEN}' git-refs-url/heads/backport/123-to-branch"
-        The output should equal '::debug::status=422'
+        The output should equal '::group::Deleting closed pull request branch
+::debug::status=422
+Deleted
+::endgroup::'
       End
     End
 
+    Describe 'REST API returns 401'
+      curl_args="$(mktemp)"
+      # mock curl
+      curl() {
+        echo "$*" > "${curl_args}"
+        echo 401
+      }
+
+      fail() {
+        echo '::endgroup::'
+        exit 1
+      }
+
+      After "rm \"${curl_args}\""
+
+      It 'Fails to delete branch'
+        When run delete_branch backport/123-to-branch
+        The value "$(cat "${curl_args}")" should equal "-XDELETE -v -fsL --fail --output /dev/stderr -w %{http_code} -H Accept: application/vnd.github.v3+json -H 'Authorization: Bearer ${INPUT_TOKEN}' git-refs-url/heads/backport/123-to-branch"
+        The output should equal '::group::Deleting closed pull request branch
+::debug::status=401
+Failed to delete branch
+::endgroup::'
+        The status should equal 1
+      End
+    End
   End
 
   Describe 'main'
@@ -474,10 +509,12 @@ EOF
 
         It 'Fails when rate API returns status 4xx'
           When run check_token
-          The output should equal '::debug::curl verbose output
+          The output should equal '::group::Checking token
+::debug::curl verbose output
 ::debug::curl verbose output (second line)
 ::debug::status=401
-::error::Provided INPUT_TOKEN is not valid according to the rate API'
+::error::Provided INPUT_TOKEN is not valid according to the rate API
+::endgroup::'
           The value "$(cat "${curl_args}")" should equal '-v -fsL --fail --output /dev/stderr -w %{http_code} -H '"'"'Authorization: Bearer github-token'"'"' https://api.github.com/rate_limit'
           The status should equal 1
         End
@@ -493,9 +530,12 @@ EOF
 
         It 'Succeeds when rate API returns status 2xx'
           When run check_token
-          The output should equal '::debug::curl verbose output
+          The output should equal '::group::Checking token
+::debug::curl verbose output
 ::debug::curl verbose output (second line)
-::debug::status=200'
+::debug::status=200
+Token seems valid
+::endgroup::'
           The value "$(cat "${curl_args}")" should equal '-v -fsL --fail --output /dev/stderr -w %{http_code} -H '"'"'Authorization: Bearer github-token'"'"' https://api.github.com/rate_limit'
           The status should equal 0
         End
