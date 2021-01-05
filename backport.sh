@@ -201,7 +201,7 @@ delete_branch() {
     --output /dev/stderr \
     -w '%{http_code}' \
     -H 'Accept: application/vnd.github.v3+json' \
-    -H \'"Authorization: Bearer ${INPUT_TOKEN}"\' \
+    -H "Authorization: Bearer ${INPUT_TOKEN}" \
     "$refs_url/heads/$branch" \
     2> "${output_f}" || true
   )
@@ -236,8 +236,8 @@ check_token() {
     --fail \
     --output /dev/stderr \
     -w '%{http_code}' \
-    -H \'"Authorization: Bearer ${INPUT_TOKEN}"\' \
-    "https://api.github.com/rate_limit" \
+    -H "Authorization: Bearer ${INPUT_TOKEN}" \
+    "https://api.github.com/user" \
     2> "${output_f}" || true
   )
 
@@ -247,7 +247,7 @@ check_token() {
   echo "::debug::status=${status}"
   if [[ ${status} != 200 ]]
   then
-    echo '::error::Provided INPUT_TOKEN is not valid according to the rate API'
+    echo '::error::Provided INPUT_TOKEN is not valid according to the user API'
     echo '::endgroup::'
     exit 1
   fi
