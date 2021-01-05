@@ -3,15 +3,15 @@ set -e
 set -o pipefail
 
 debug() {
-  local cmd=$*
+  local cmd=("$@")
 
-  echo "::debug::running: ${cmd}"
+  echo "::debug::running: ${cmd[*]}"
 
   local stderr
   stderr=$(mktemp)
 
   local stdout
-  stdout=$(${cmd} 2> "${stderr}")
+  stdout=$(${cmd[*]} 2> "${stderr}")
 
   local rc=$?
 
@@ -40,9 +40,9 @@ http_post() {
     --output /dev/stderr \
     -w '{"http_code":%{http_code},"url_effective":"%{url_effective}"}' \
     -H 'Accept: application/vnd.github.v3+json' \
-    -H \'"Authorization: Bearer ${INPUT_TOKEN}"\' \
+    -H "'Authorization: Bearer ${INPUT_TOKEN}'" \
     -H 'Content-Type: application/json' \
-    -d \'"${json}"\' \
+    -d "'${json}'" \
     "${url}" > "${stdout}" 2> "${stderr}" || true
 
   result=$(grep -v -e '^::debug::' "${stdout}")
