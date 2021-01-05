@@ -38,12 +38,12 @@ http_post() {
 
   debug curl -XPOST --fail -v -fsL \
     --output /dev/stderr \
-    -w '{"http_code":%{http_code},"url_effective":"%{url_effective}"}' \
-    -H 'Accept: application/vnd.github.v3+json' \
+    -w "'"'{"http_code":%{http_code},"url_effective":"%{url_effective}"}'"'" \
+    -H "'Accept: application/vnd.github.v3+json'" \
     -H "'Authorization: Bearer ${INPUT_TOKEN}'" \
-    -H 'Content-Type: application/json' \
+    -H "'Content-Type: application/json'" \
     -d "'${json}'" \
-    "${url}" > "${stdout}" 2> "${stderr}" || true
+    "'${url}'" > "${stdout}" 2> "${stderr}" || true
 
   result=$(grep -v -e '^::debug::' "${stdout}")
   grep '::debug::' "${stdout}"
