@@ -54,7 +54,7 @@ http_post() {
   rm "${output}"
 
   echo "::debug::result=${result}"
-  if [[ $(echo "${result}" |jq -r .http_code) != "2*" ]]
+  if [[ ! $(echo "${result}" |jq -r .http_code) =~ ^"2" ]]
   then
     local message
     message=$(echo "${result}"| jq -r -s 'add | (.http_code|tostring) + ", effective url: " + .url_effective')
