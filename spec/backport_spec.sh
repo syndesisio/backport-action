@@ -260,8 +260,7 @@ EOF
       # mock curl
       curl() {
         echo "$@" > "${curl_args}"
-        local args="$*"
-        echo 204 > "$(local tmp="${args/*--output /}"; echo "${tmp/% */}")"
+        echo 204
       }
 
       After "rm \"${curl_args}\""
@@ -271,6 +270,7 @@ EOF
         The value "$(cat "${curl_args}")" should match pattern "-XDELETE -v -fsL --fail --output * -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} git-refs-url/heads/backport/123-to-branch"
       The output should match pattern '::group::Deleting closed pull request branch
 ::debug::running: curl -XDELETE -v -fsL --fail --output * -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer github-token git-refs-url/heads/backport/123-to-branch
+::debug::out:204
 ::debug::rc=0
 ::debug::status=204
 Deleted
@@ -283,8 +283,7 @@ Deleted
       # mock curl
       curl() {
         echo "$@" > "${curl_args}"
-        local args="$*"
-        echo 422 > "$(local tmp="${args/*--output /}"; echo "${tmp/% */}")"
+        echo 422
       }
 
       After "rm \"${curl_args}\""
@@ -294,6 +293,7 @@ Deleted
         The value "$(cat "${curl_args}")" should match pattern "-XDELETE -v -fsL --fail --output * -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} git-refs-url/heads/backport/123-to-branch"
         The output should match pattern '::group::Deleting closed pull request branch
 ::debug::running: curl -XDELETE -v -fsL --fail --output * -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer github-token git-refs-url/heads/backport/123-to-branch
+::debug::out:422
 ::debug::rc=0
 ::debug::status=422
 Deleted
@@ -305,9 +305,8 @@ Deleted
       curl_args="$(mktemp)"
       # mock curl
       curl() {
-        local args="$*"
-        echo "${args}" > "${curl_args}"
-        echo 401 > "$(local tmp="${args/*--output /}"; echo "${tmp/% */}")"
+        echo "$@" > "${curl_args}"
+        echo 401
       }
 
       fail() {
@@ -322,6 +321,7 @@ Deleted
         The value "$(cat "${curl_args}")" should match pattern "-XDELETE -v -fsL --fail --output * -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer ${INPUT_TOKEN} git-refs-url/heads/backport/123-to-branch"
         The output should match pattern '::group::Deleting closed pull request branch
 ::debug::running: curl -XDELETE -v -fsL --fail --output * -w %{http_code} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer github-token git-refs-url/heads/backport/123-to-branch
+::debug::out:401
 ::debug::rc=0
 ::debug::status=401
 Failed to delete branch
@@ -507,11 +507,10 @@ EOF
         curl_args="$(mktemp)"
         # mock curl
         curl() {
-          local args="$*"
-          echo "${args}" > "${curl_args}"
+          echo "$@" > "${curl_args}"
           echo "curl verbose output" 1>&2
           echo "curl verbose output (second line)" 1>&2
-          echo 401 > "$(local tmp="${args/*--output /}"; echo "${tmp/% */}")"
+          echo 401
         }
 
         After "rm \"${curl_args}\""
@@ -522,6 +521,7 @@ EOF
 ::debug::running: curl -v -fsL --fail --output * -w %{http_code} -H Authorization: Bearer github-token https://api.github.com/zen
 ::debug::err:curl verbose output
 ::debug::err:curl verbose output (second line)
+::debug::out:401
 ::debug::rc=0
 ::debug::status=401
 ::error::Provided INPUT_TOKEN is not valid according to the zen API
@@ -536,7 +536,7 @@ EOF
           echo "curl verbose output" >&2
           echo "curl verbose output (second line)" >&2
           local args="$*"
-          echo '200' > "$(local tmp="${args/*--output /}"; echo "${tmp/% */}")"
+          echo '200'
         }
 
         It 'Succeeds when zen API returns status 2xx'
@@ -545,6 +545,7 @@ EOF
 ::debug::running: curl -v -fsL --fail --output * -w %{http_code} -H Authorization: Bearer github-token https://api.github.com/zen
 ::debug::err:curl verbose output
 ::debug::err:curl verbose output (second line)
+::debug::out:200
 ::debug::rc=0
 ::debug::status=200
 Token seems valid
@@ -562,12 +563,14 @@ Token seems valid
     curl() {
       echo "$@" > "${curl_args}"
       echo "${#@}" >> "${curl_args}"
-      echo 'curl output'
-      echo 'curl output (second line)'
+      local args="$*"
+      local output
+      output="$(local tmp="${args/*--output /}"; echo "${tmp/% */}")"
+      echo 'curl output' > "${output}"
+      echo 'curl output (second line)' >> "${output}"
       echo 'curl error output' >&2
       echo 'curl error output (second line)' >&2
-      local args="$*"
-      echo '{"http_code":401,"url_effective":"url"}' > "$(local tmp="${args/*--output /}"; echo "${tmp/% */}")"
+      echo '{"http_code":401,"url_effective":"url"}'
 
       return 22
     }
@@ -577,11 +580,12 @@ Token seems valid
     It 'Should handle errors'
       When run http_post url '{"json":"data"}'
       The output should match pattern '::debug::running: curl -XPOST --fail -v -fsL --output * -w {"http_code":%{http_code},"url_effective":"%{url_effective}"} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer github-token -H Content-Type: application/json -d {"json":"data"} url
-::debug::out:curl output
-::debug::out:curl output (second line)
 ::debug::err:curl error output
 ::debug::err:curl error output (second line)
+::debug::out:{"http_code":401,"url_effective":"url"}
 ::debug::rc=22
+::debug::output:curl output
+::debug::output:curl output (second line)
 ::debug::result={"http_code":401,"url_effective":"url"}
 ::error::Error in HTTP POST to url of '"\`"'{"json":"data"}'"\`"': 401, effective url: url'
       The value "$(cat "${curl_args}")" should match pattern '-XPOST --fail -v -fsL --output * -w {"http_code":%{http_code},"url_effective":"%{url_effective}"} -H Accept: application/vnd.github.v3+json -H Authorization: Bearer github-token -H Content-Type: application/json -d {"json":"data"} url
@@ -607,17 +611,21 @@ Token seems valid
     After "rm \"${prog_args}\""
 
     It 'Should debug log and execute'
-      When run debug prog -a -b -c "'x y'" '"z w"'
+      out=""
+      When call debug out prog -a -b -c "'x y'" '"z w"'
       The output should equal "::debug::running: prog -a -b -c 'x y' \"z w\""'
-::debug::out:stdout 1
-::debug::out:stdout 2
-::debug::out:stdout 3
 ::debug::err:stderr 1
 ::debug::err:stderr 2
 ::debug::err:stderr 3
+::debug::out:stdout 1
+::debug::out:stdout 2
+::debug::out:stdout 3
 ::debug::rc=3'
       The value "$(cat "${prog_args}")" should equal "-a -b -c 'x y' \"z w\"
 5"
+      The value "${out}" should equal 'stdout 1
+stdout 2
+stdout 3'
       The status should equal 3
     End
   End
