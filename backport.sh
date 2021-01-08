@@ -2,11 +2,20 @@
 set -o errexit -o pipefail -o nounset
 
 debug() {
+  local outvar=$1
+  shift
   echo "::debug::running: $*"
 
-  ("$@" 2> >(sed -e 's/^/::debug::err:/') > >(sed -e 's/^/::debug::out:/'))
-
+  local stdout
+  stdout="$(mktemp)"
+  # shellcheck disable=SC2001
+  ("$@" 2> >(sed -e 's/^/::debug::err:/') > "${stdout}")
   local rc=$?
+  sed -e 's/^/::debug::out:/' "${stdout}"
+  # shellcheck disable=SC2140
+  eval "${outvar}"="'$(cat "${stdout}")'"
+  rm "${stdout}"
+
   script -q -c 'bash -c "echo -n"' # force flushing stdout so that debug out/err are outputted before rc
   echo "::debug::rc=${rc}"
 
@@ -20,7 +29,8 @@ http_post() {
   local output
   output="$(mktemp)"
 
-  debug curl -XPOST --fail -v -fsL \
+  result=''
+  debug result curl -XPOST --fail -v -fsL \
     --output "${output}" \
     -w '{"http_code":%{http_code},"url_effective":"%{url_effective}"}' \
     -H 'Accept: application/vnd.github.v3+json' \
@@ -29,8 +39,7 @@ http_post() {
     -d "${json}" \
     "${url}"|| true
 
-  local result
-  result=$(cat "${output}")
+  sed -e 's/^/::debug::output:/' "${output}"
   rm "${output}"
 
   echo "::debug::result=${result}"
@@ -178,7 +187,7 @@ delete_branch() {
   local output
   output="$(mktemp)"
 
-  debug curl -XDELETE -v -fsL \
+  debug status curl -XDELETE -v -fsL \
     --fail \
     --output "${output}" \
     -w '%{http_code}' \
@@ -186,8 +195,7 @@ delete_branch() {
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
     "$refs_url/heads/$branch" || true
 
-  local status
-  status=$(cat "${output}")
+  sed -e 's/^/::debug::output:/' "${output}"
   rm "${output}"
 
   echo "::debug::status=${status}"
@@ -213,15 +221,15 @@ check_token() {
   local output
   output="$(mktemp)"
 
-  debug curl -v -fsL \
+  status=''
+  debug status curl -v -fsL \
     --fail \
     --output "${output}" \
     -w '%{http_code}' \
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
     "https://api.github.com/zen" || true
 
-  local status
-  status=$(cat "${output}")
+  sed -e 's/^/::debug::output:/' "${output}"
   rm "${output}"
 
   echo "::debug::status=${status}"
