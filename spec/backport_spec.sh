@@ -630,4 +630,28 @@ stdout 3'
     End
   End
 
+  Describe 'newline_at_eof'
+    file="$(mktemp)"
+
+    After "rm \"${file}\""
+
+    It 'Should add newline to file'
+      echo -n 'abc'> "${file}"
+      When call newline_at_eof "${file}"
+      The value "$(stat --format='%s' "${file}")" should equal 4
+    End
+
+    It 'Should not add newline to file if it exists'
+      echo 'text'> "${file}"
+      When call newline_at_eof "${file}"
+      The value "$(stat --format='%s' "${file}")" should equal 5
+    End
+
+    It 'Newline should not be added to empty files'
+      echo -n ''> "${file}"
+      When call newline_at_eof "${file}"
+      The value "$(stat --format='%s' "${file}")" should equal 0
+    End
+  End
+
 End
