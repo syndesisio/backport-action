@@ -259,11 +259,12 @@ check_token() {
 }
 
 main() {
-  echo "::debug::environment"
+  echo '::group::Environment'
   for e in $(printenv)
   do
     echo "::debug::${e}"
   done
+  echo '::endgroup::'
 
   local state
   state=$(jq --raw-output .pull_request.state "${GITHUB_EVENT_PATH}")
