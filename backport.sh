@@ -26,7 +26,7 @@ debug() {
   sed -e 's/^/::debug::out:/' "${stdout}"
   rm "${stdout}"
 
-  script -q -c 'bash -c "echo -n"' # force flushing stdout so that debug out/err are outputted before rc
+  bash -c 'echo -n' # force flushing stdout so that debug out/err are outputted before rc
   echo "::debug::rc=${rc}"
 
   return ${rc}
@@ -97,7 +97,8 @@ cherry_pick() {
   local backport_branch=$3
   local merge_sha=$4
 
-  git clone -q --no-tags -b "${branch}" "${repository}" "${GITHUB_WORKSPACE}" || fail "Unable to clone from repository \'${repository}\' a branch named \'${branch}\', this should not have happened"
+  output=''
+  debug output git clone -q --no-tags -b "${branch}" "${repository}" "${GITHUB_WORKSPACE}" || fail "Unable to clone from repository \`${repository}\` a branch named \`${branch}\`, this should not have happened" &&
   (
     cd "${GITHUB_WORKSPACE}"
 
@@ -108,10 +109,10 @@ cherry_pick() {
 
     set +e
 
-    git checkout -q -b "${backport_branch}" > /dev/null 2>&1 || fail "Unable to checkout branch named \`${branch}\`, you might need to create it or use a different label."
+    debug output git checkout -q -b "${backport_branch}" || fail "Unable to checkout branch named \`${branch}\`, you might need to create it or use a different label."
 
-    local err
-    err=$(git -c user.name="${user_name}" -c user.email="${user_email}" cherry-pick --mainline 1 "${merge_sha}" 2>&1) || fail "Unable to cherry-pick commit ${merge_sha} on top of branch \`${branch}\`.\n\nThis pull request needs to be backported manually." "${err}"
+    debug output git -c user.name="${user_name}" -c user.email="${user_email}" cherry-pick -x --mainline 1 "${merge_sha}" || fail "Unable to cherry-pick commit ${merge_sha} on top of branch \`${branch}\`.\n\nThis pull request needs to be backported manually." "${output}
+$(git status)"
 
     set -e
   )
@@ -241,6 +242,7 @@ check_token() {
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
     "https://api.github.com/zen" || true
 
+  newline_at_eof "${output}"
   sed -e 's/^/::debug::output:/' "${output}"
   rm "${output}"
 

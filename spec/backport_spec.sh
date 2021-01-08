@@ -78,6 +78,8 @@ http_post invoked with: comments-url {"body":"message\n\n<details><summary>Error
 
       It 'Cherry picks'
         When call cherry_pick 'branch' "${git_repository}" 'backport-branch' "${merge_commit_sha}"
+        The output should match pattern "::debug::running: git clone -q --no-tags -b branch ${git_repository} *
+::debug::rc=0"
         The value "$(cd "${GITHUB_WORKSPACE}" && git show backport-branch:file)" should equal "modified"
       End
     End
@@ -146,14 +148,33 @@ EOF
       It 'Fails due to merge conflict'
         When run cherry_pick 'branch' "${git_repository}" 'backport-branch' "${merge_commit_sha}"
         The value "$(cd "${GITHUB_WORKSPACE}" && git show backport-branch:file)" should equal "conflict"
-        The output should match pattern "::error::Unable to cherry-pick commit ${merge_commit_sha} on top of branch \`branch\`.\n\nThis pull request needs to be backported manually. (Auto-merging file
+        The output should match pattern "::debug::running: git clone -q --no-tags -b branch ${git_repository} *
+::debug::rc=0
+::debug::running: git checkout -q -b backport-branch
+::debug::rc=0
+::debug::running: git -c user.name=testuser -c user.email=test@example.com cherry-pick -x --mainline 1 ${merge_commit_sha}
+::debug::err:error: could not apply *... Merge commit '*'
+::debug::err:hint: after resolving the conflicts, mark the corrected paths
+::debug::err:hint: with 'git add <paths>' or 'git rm <paths>'
+::debug::err:hint: and commit the result with 'git commit'
+::debug::out:Auto-merging file
+::debug::out:CONFLICT (content): Merge conflict in file
+::debug::rc=1
+::error::Unable to cherry-pick commit ${merge_commit_sha} on top of branch \`branch\`.\n\nThis pull request needs to be backported manually. (Auto-merging file
 CONFLICT (content): Merge conflict in file
-error: could not apply *... Merge commit '*'
-hint: after resolving the conflicts, mark the corrected paths
-hint: with 'git add <paths>' or 'git rm <paths>'
-hint: and commit the result with 'git commit')
+On branch backport-branch
+You are currently cherry-picking commit *.
+  (fix conflicts and run \"git cherry-pick --continue\")
+  (use \"git cherry-pick --skip\" to skip this patch)
+  (use \"git cherry-pick --abort\" to cancel the cherry-pick operation)
+
+Unmerged paths:
+  (use \"git add <file>...\" to mark resolution)
+	both modified:   file
+
+no changes added to commit (use \"git add\" and/or \"git commit -a\"))
 ::endgroup::
-http_post invoked with:comments-url {\"body\":\"Unable to cherry-pick commit * on top of branch \`branch\`.\\n\\nThis pull request needs to be backported manually.\\n\\n<details><summary>Error</summary><pre>Auto-merging file\\nCONFLICT (content): Merge conflict in file\\nerror: could not apply *... Merge commit '*'\\nhint: after resolving the conflicts, mark the corrected paths\\nhint: with 'git add <paths>' or 'git rm <paths>'\\nhint: and commit the result with 'git commit'</pre></details>\"}"
+http_post invoked with:comments-url {\"body\":\"Unable to cherry-pick commit * on top of branch \`branch\`.\\n\\nThis pull request needs to be backported manually.\\n\\n<details><summary>Error</summary><pre>Auto-merging file\\nCONFLICT (content): Merge conflict in file\\nOn branch backport-branch\nYou are currently cherry-picking commit *.\n  (fix conflicts and run \\\"git cherry-pick --continue\\\")\n  (use \\\"git cherry-pick --skip\\\" to skip this patch)\n  (use \\\"git cherry-pick --abort\\\" to cancel the cherry-pick operation)\n\nUnmerged paths:\n  (use \\\"git add <file>...\\\" to mark resolution)\n\\tboth modified:   file\n\nno changes added to commit (use \\\"git add\\\" and/or \\\"git commit -a\\\")</pre></details>\"}"
         The status should equal 1
       End
     End
