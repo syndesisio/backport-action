@@ -1,6 +1,15 @@
 #!/bin/bash
 set -o errexit -o pipefail -o nounset
 
+newline_at_eof() {
+  local file="$1"
+  if [ -s "${file}" ] && [ "$(tail -c1 "${file}"; echo x)" != $'\nx' ]
+  then
+    # ensure newline at the end of file
+    echo ''>> "${file}"
+  fi
+}
+
 debug() {
   local outvar=$1
   shift
@@ -11,9 +20,10 @@ debug() {
   # shellcheck disable=SC2001
   ("$@" 2> >(sed -e 's/^/::debug::err:/') > "${stdout}")
   local rc=$?
-  sed -e 's/^/::debug::out:/' "${stdout}"
   # shellcheck disable=SC2140
   eval "${outvar}"="'$(cat "${stdout}")'"
+  newline_at_eof "${stdout}"
+  sed -e 's/^/::debug::out:/' "${stdout}"
   rm "${stdout}"
 
   script -q -c 'bash -c "echo -n"' # force flushing stdout so that debug out/err are outputted before rc
@@ -39,6 +49,7 @@ http_post() {
     -d "${json}" \
     "${url}"|| true
 
+  newline_at_eof "${output}"
   sed -e 's/^/::debug::output:/' "${output}"
   rm "${output}"
 
@@ -195,6 +206,7 @@ delete_branch() {
     -H "Authorization: Bearer ${INPUT_TOKEN}" \
     "$refs_url/heads/$branch" || true
 
+  newline_at_eof "${output}"
   sed -e 's/^/::debug::output:/' "${output}"
   rm "${output}"
 
