@@ -59,9 +59,10 @@ http_post invoked with: comments-url {"body":"message\n\n<details><summary>Error
     Describe 'Cherry pick succeeds'
       setup_repo() {
         cd "${git_repository}" || exit
-        git init -q
+        git init -q -b main
         git config user.name testuser
         git config user.email test@example.com
+        git config init.defaultBranch main
         echo initial > file
         git add file
         git commit -q -m initial file
@@ -70,7 +71,7 @@ http_post invoked with: comments-url {"body":"message\n\n<details><summary>Error
         echo modified > file
         git commit -q -m change file
         commit="$(git rev-parse HEAD)"
-        git checkout -q master
+        git checkout -q main
         git merge -q --no-ff --commit "${commit}"
         merge_commit_sha="$(git rev-parse HEAD)"
       }
@@ -92,9 +93,10 @@ http_post invoked with: comments-url {"body":"message\n\n<details><summary>Error
 
       setup_repo() {
         cd "${git_repository}" || exit
-        git init -q
+        git init -q -b main
         git config user.name testuser
         git config user.email test@example.com
+        git config init.defaultBranch main
         echo initial > file
         git add file
         git commit -q -m initial file
@@ -102,11 +104,11 @@ http_post invoked with: comments-url {"body":"message\n\n<details><summary>Error
         echo conflict > file
         git add file
         git commit -q -m conflict
-        git checkout -q -b feature master
+        git checkout -q -b feature main
         echo modified > file
         git commit -q -m change file
         commit="$(git rev-parse HEAD)"
-        git checkout -q master
+        git checkout -q main
         git merge -q --no-ff --commit "${commit}"
         merge_commit_sha="$(git rev-parse HEAD)"
       }
@@ -184,9 +186,10 @@ http_post invoked with:comments-url {\"body\":\"Unable to cherry-pick commit * o
   Describe 'push'
     setup_repo() {
       cd "${git_repository}" || exit
-      git init -q
+      git init -q -b main
       git config user.name testuser
       git config user.email test@example.com
+      git config init.defaultBranch main
       echo initial > file
       git add file
       git commit -q -m initial file
@@ -194,6 +197,7 @@ http_post invoked with:comments-url {\"body\":\"Unable to cherry-pick commit * o
       git clone -q "${git_repository}" .
       git config user.name otheruser
       git config user.email other@example.com
+      git config init.defaultBranch main
       git checkout -q -b backport-branch
       echo modified > file
       git commit -q -m change file
