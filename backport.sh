@@ -134,7 +134,7 @@ push() {
 
     set +e
 
-    git -c user.name="${user_name}" -c user.email="${user_email}" -c "http.https://github.com.extraheader=Authorization: basic ${auth}" push -q --set-upstream origin "${backport_branch}" || fail "Unable to push the backported branch, did you try to backport the same PR twice without deleting the \`${backport_branch}\` branch?"
+    git -c user.name="${user_name}" -c user.email="${user_email}" -c "http.https://github.com.extraheader=Authorization: basic ${auth}" push --set-upstream origin "${backport_branch}" 2>/dev/null || fail "Unable to push the backported branch, did you try to backport the same PR twice without deleting the \`${backport_branch}\` branch?"
 
     set -e
   )
